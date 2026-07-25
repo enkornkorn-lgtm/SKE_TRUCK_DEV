@@ -1,0 +1,10 @@
+README-MODULAR-DEV-V1.txt: 1,898 bytes
+css/app.css: 40,102 bytes
+css/overrides.css: 2,018 bytes
+index.html: 69,600 bytes
+js/app.js: 442,911 bytes
+js/firebase.js: 78,248 bytes
+js/static-icons.js: 519 bytes
+js/ui-patch.js: 413 bytes
+manifest.json: 405 bytes
+sw.js: 3,538 bytes
