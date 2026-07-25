@@ -1,7 +1,7 @@
-// SKE TRUCK DEV Unified Service Worker — PWA Cache Fix V1
+// SKE TRUCK DEV Unified Service Worker — Connection V5 DEV
 // Scope-aware cache; network-first for HTML/JS/CSS; never caches Firebase traffic.
 const CACHE_PREFIX = 'ske-truck-dev-pwa-';
-const CACHE_NAME = CACHE_PREFIX + 'v1-20260725';
+const CACHE_NAME = CACHE_PREFIX + 'connection-v5-20260725';
 const CORE_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
