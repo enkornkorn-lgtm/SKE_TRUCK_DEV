@@ -15,12 +15,23 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // ── ตัวควบคุมการเชื่อมต่อ V2 ─────────────────────────────────────────────
-  // หลักการ: ไม่ตัด WebSocket ทุกครั้งที่กลับเข้าแอป ให้ Firebase ฟื้นตัวเองก่อน
-  // การ goOffline/goOnline ใช้เฉพาะเมื่อผู้ใช้แตะปุ่มลองใหม่ และ connection หลุดจริงเท่านั้น
+  // ── ตัวควบคุมการเชื่อมต่อ V5.1 DEV ─────────────────────────────────────
+  // หลักการ:
+  // 1) ปล่อยให้ Firebase SDK reconnect เองก่อน
+  // 2) เมื่อกลับจาก background / network เปลี่ยน และยัง disconnected ต่อเนื่อง
+  //    จึงค่อย reset socket แบบควบคุมเพียงครั้งเดียว
+  // 3) ไม่ล้าง Cache / localStorage ทุกครั้ง เพราะจะทำให้ session และคิว offline หาย
   let _reconnecting = false;
   let _lastHardReconnectAt = 0;
-  const HARD_RECONNECT_COOLDOWN_MS = 15000;
+  let _recoveryTimer = null;
+  let _disconnectSince = 0;
+  let _hardAttemptsInWindow = 0;
+  let _attemptWindowStartedAt = 0;
+
+  const HARD_RECONNECT_COOLDOWN_MS = 12000;
+  const DISCONNECTED_GRACE_MS = 3500;
+  const MAX_HARD_ATTEMPTS_PER_WINDOW = 2;
+  const ATTEMPT_WINDOW_MS = 60000;
 
   function _finishReconnect(result) {
     _reconnecting = false;
@@ -28,70 +39,83 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     if (typeof window._setReconnecting === 'function') window._setReconnecting(false);
   }
 
-  window.forceReconnectNow = function(source){
-    if (_reconnecting) return;
-    if (!navigator.onLine) {
-      if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ยกเลิก: navigator.onLine=false');
+  function _canHardReconnect() {
+    const now = Date.now();
+    if (!navigator.onLine) return false;
+    if (now - _lastHardReconnectAt < HARD_RECONNECT_COOLDOWN_MS) return false;
+    if (!(_attemptWindowStartedAt) || now - _attemptWindowStartedAt > ATTEMPT_WINDOW_MS) {
+      _attemptWindowStartedAt = now;
+      _hardAttemptsInWindow = 0;
+    }
+    return _hardAttemptsInWindow < MAX_HARD_ATTEMPTS_PER_WINDOW;
+  }
+
+  function _hardReconnect(source, done) {
+    if (!_canHardReconnect()) {
+      done('งด hard reconnect ชั่วคราวเพื่อไม่ให้ตัดต่อรัว');
+      return;
+    }
+    _lastHardReconnectAt = Date.now();
+    _hardAttemptsInWindow++;
+    if (typeof window._skeDebugLog === 'function') {
+      window._skeDebugLog('Reconnect', 'reset socket จาก ' + source + ' ครั้งที่ ' + _hardAttemptsInWindow);
+    }
+    try {
+      goOffline(db);
+      setTimeout(() => {
+        goOnline(db);
+        let checks = 0;
+        const timer = setInterval(() => {
+          checks++;
+          if (window._fbConnected === true) {
+            clearInterval(timer);
+            _hardAttemptsInWindow = 0;
+            if (window.fbForceRefresh) window.fbForceRefresh(() => done('hard reconnect สำเร็จ'));
+            else done('hard reconnect สำเร็จ');
+          } else if (checks >= 12) {
+            clearInterval(timer);
+            done('SDK ยังเชื่อมไม่ได้หลัง reset socket');
+          }
+        }, 1000);
+      }, 800);
+    } catch (e) {
+      console.error('hardReconnect error', e);
+      done('exception: ' + (e.message || e));
+    }
+  }
+
+  window.forceReconnectNow = function(source = 'manual') {
+    if (_reconnecting || !navigator.onLine) return;
+    if (window._fbConnected === true) {
+      if (window.fbForceRefresh) window.fbForceRefresh(() => {});
       return;
     }
 
     _reconnecting = true;
     if (typeof window._setReconnecting === 'function') window._setReconnecting(true);
-    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', source === 'resume' ? 'soft refresh หลังกลับเข้าแอป' : 'ผู้ใช้แตะลองเชื่อมต่อใหม่');
+    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'เริ่ม recovery จาก ' + source);
 
-    const safetyTimer = setTimeout(() => _finishReconnect('timeout หลัง 15 วินาที'), 15000);
-    const finish = (msg) => { clearTimeout(safetyTimer); _finishReconnect(msg); };
+    const safetyTimer = setTimeout(() => _finishReconnect('timeout หลัง 18 วินาที'), 18000);
+    const finish = msg => { clearTimeout(safetyTimer); _finishReconnect(msg); };
 
-    // ตอน resume ทำแค่ดึงข้อมูลใหม่ ห้ามตัด connection เดิม
-    if (source === 'resume') {
-      if (!window.fbForceRefresh) { finish('ไม่มี fbForceRefresh'); return; }
-      window.fbForceRefresh(ok => finish(ok ? 'soft refresh สำเร็จ' : 'soft refresh ไม่สำเร็จ — รอ SDK ต่อเอง'));
-      return;
-    }
-
-    // ปุ่มลองใหม่: ลองอ่านข้อมูลก่อน ถ้าอ่านได้ก็ไม่ต้อง reset socket
-    const softThenHard = () => {
-      if (!window.fbForceRefresh) { hardReconnect(); return; }
+    // ลองอ่านข้อมูลแบบ soft ก่อน เผื่อ .info/connected ยังไม่อัปเดตทัน
+    if (window.fbForceRefresh) {
       window.fbForceRefresh(ok => {
-        if (ok && window._fbConnected === true) { finish('เชื่อมต่ออยู่แล้ว'); return; }
-        hardReconnect();
+        if (ok && window._fbConnected === true) finish('soft refresh สำเร็จ');
+        else _hardReconnect(source, finish);
       });
-    };
-
-    const hardReconnect = () => {
-      const now = Date.now();
-      if (now - _lastHardReconnectAt < HARD_RECONNECT_COOLDOWN_MS) {
-        finish('เว้นช่วง hard reconnect เพื่อไม่ให้ตัดต่อรัว');
-        return;
-      }
-      _lastHardReconnectAt = now;
-      try {
-        goOffline(db);
-        setTimeout(() => {
-          goOnline(db);
-          // รอ SDK handshake แล้วตรวจ connection; ไม่ reload หน้าอัตโนมัติ
-          let checks = 0;
-          const timer = setInterval(() => {
-            checks++;
-            if (window._fbConnected === true) {
-              clearInterval(timer);
-              if (window.fbForceRefresh) window.fbForceRefresh(() => finish('hard reconnect สำเร็จ'));
-              else finish('hard reconnect สำเร็จ');
-            } else if (checks >= 8) {
-              clearInterval(timer);
-              finish('ยังเชื่อมไม่ได้ — กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่');
-            }
-          }, 1000);
-        }, 600);
-      } catch(e) {
-        console.error('forceReconnectNow error', e);
-        finish('exception: ' + (e.message || e));
-      }
-    };
-
-    softThenHard();
+    } else {
+      _hardReconnect(source, finish);
+    }
   };
 
+  window._skeScheduleRecovery = function(source = 'auto', delay = DISCONNECTED_GRACE_MS) {
+    clearTimeout(_recoveryTimer);
+    if (!navigator.onLine || window._fbConnected === true) return;
+    _recoveryTimer = setTimeout(() => {
+      if (navigator.onLine && window._fbConnected === false) window.forceReconnectNow(source);
+    }, delay);
+  };
   // ══ ระบบเก็บ log ปัญหาจริงในเครื่อง — ดูได้จากในแอพเลย ไม่ต้องต่อคอมพิวเตอร์/USB debugging ══
   // เก็บ error จริงที่ Chrome เจอ + เหตุการณ์เชื่อมต่อสำคัญ ไว้ดูย้อนหลังตอนแบนเนอร์แดงค้าง
   const SKE_DEBUG_LOG_KEY = 'ske_debug_log';
@@ -842,6 +866,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   onValue(ref(db, '.info/connected'), (snap) => {
     const connected = snap.val() === true;
     window._fbConnected = connected;
+    if (connected) {
+      _disconnectSince = 0;
+      clearTimeout(_recoveryTimer);
+      _hardAttemptsInWindow = 0;
+    } else {
+      if (!_disconnectSince) _disconnectSince = Date.now();
+      if (navigator.onLine && typeof window._skeScheduleRecovery === 'function') {
+        window._skeScheduleRecovery('info-connected-false', DISCONNECTED_GRACE_MS);
+      }
+    }
     if (connected && !_wasConnected) {
       _obFlushAll();
       // เพิ่งกลับมาเชื่อมต่อได้ → sync ข้อมูลทุกชุดทันที (onValue จะ replay ให้เองอยู่แล้ว แต่ get ย้ำให้ชัวร์+เร็ว)

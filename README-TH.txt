@@ -1,20 +1,12 @@
-SKE TRUCK CONNECTION V5 — DEV TEST ONLY
+SKE TRUCK CONNECTION V5.1 DEV
 
-เวอร์ชันที่แสดงในแอป: v2026.07.25-connection-v5-dev
+ใช้กับ Repository SKE_TRUCK_DEV เท่านั้น
 
-อัปไฟล์ทั้ง 11 ไฟล์นี้ทับใน Repository SKE_TRUCK_DEV เท่านั้น:
-- index.html
-- app.js
-- firebase.js
-- sw.js
-- manifest.json
-- app.css
-- overrides.css
-- static-icons.js
-- ui-patch.js
-- icon-192.png
-- icon-512.png
+การแก้หลัก:
+- ไม่ล้าง cache/localStorage ทุกครั้งที่เปิดแอป
+- เพิ่ม recovery เมื่อกลับจาก background, browser online และ watchdog ตอนหน้าแอปมองเห็น
+- รอ Firebase SDK reconnect เองก่อน แล้วค่อย reset socket แบบมี cooldown
+- จำกัด hard reconnect ไม่เกิน 2 ครั้งต่อนาที ป้องกันการตัดต่อรัว
+- Service Worker bump cache เป็น V5.1
 
-ห้ามอัปลง Production ตอนนี้
-หลัง GitHub Pages deploy เสร็จ ให้ลบข้อมูลเว็บไซต์ของ DEV หนึ่งครั้ง แล้วเปิดใหม่
-เกณฑ์ผ่าน: สลับ Wi-Fi/4G แล้วแถบแดงหายเอง, เปิดใหม่ได้โดยไม่ลบข้อมูลเว็บ, และข้อมูลอัปเดตได้
+อัปไฟล์ทั้งหมดทับ DEV แล้วรอ Deploy จากนั้นล้าง Site Data ของ DEV หนึ่งครั้งเท่านั้น

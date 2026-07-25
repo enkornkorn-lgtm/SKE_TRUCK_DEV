@@ -246,7 +246,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.25-connection-v5-dev';
+const SKE_APP_VERSION='v2026.07.25-connection-v5.1-dev';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -792,14 +792,14 @@ if(document.readyState==='loading'){
   skeInitApp();
 }
 
-// ── กลับเข้าแอปจาก background: soft refresh เท่านั้น ───────────────────────
-// ไม่สั่ง goOffline/goOnline อัตโนมัติ เพราะการเข้า–ออกถี่จะทำให้ socket ถูกตัดต่อซ้อนกัน
+// ── Connection recovery V5.1 DEV ───────────────────────────────────────────
+// กลับเข้าแอป: รอให้ SDK reconnect เองก่อน แล้วค่อย recovery ถ้ายังค้างจริง
 let _lastVisibleRefresh=0;
 let _resumeRefreshTimer=null;
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible')return;
   const now=Date.now();
-  if(now-_lastVisibleRefresh<3000)return;
+  if(now-_lastVisibleRefresh<2500)return;
   _lastVisibleRefresh=now;
   clearTimeout(_resumeRefreshTimer);
   _resumeRefreshTimer=setTimeout(()=>{
@@ -807,16 +807,35 @@ document.addEventListener('visibilitychange',()=>{
       if(window._skeDebugLog)window._skeDebugLog('Resume','เครื่องยัง offline — รอ event online');
       return;
     }
-    if(window._skeDebugLog)window._skeDebugLog('Resume','กลับเข้าแอป — soft refresh โดยไม่ตัด connection');
-    if(window.forceReconnectNow) window.forceReconnectNow('resume');
+    if(window._skeDebugLog)window._skeDebugLog('Resume','กลับเข้าแอป — รอ SDK reconnect ก่อน');
+    if(window._fbConnected===false && window._skeScheduleRecovery){
+      window._skeScheduleRecovery('resume',2200);
+    }else if(window.fbForceRefresh){
+      window.fbForceRefresh(()=>{});
+    }
     const dash=document.getElementById('dashboard');
     const admin=document.getElementById('admin');
     setTimeout(()=>{
       if(dash&&!dash.classList.contains('hidden')&&typeof renderDashboard==='function')renderDashboard();
       if(admin&&!admin.classList.contains('hidden')&&typeof renderAdmin==='function')renderAdmin();
     },500);
-  },700);
+  },500);
 });
+
+window.addEventListener('online',()=>{
+  if(window._skeDebugLog)window._skeDebugLog('Network','browser online event');
+  if(window._skeScheduleRecovery)window._skeScheduleRecovery('browser-online',1500);
+});
+window.addEventListener('offline',()=>{
+  if(window._skeDebugLog)window._skeDebugLog('Network','browser offline event');
+});
+
+// Watchdog เบา ๆ เฉพาะตอนหน้าแอปมองเห็น เพื่อจับกรณี Android ไม่ยิง online event
+setInterval(()=>{
+  if(document.visibilityState==='visible' && navigator.onLine && window._fbConnected===false){
+    if(window._skeScheduleRecovery)window._skeScheduleRecovery('visible-watchdog',1000);
+  }
+},15000);
 
 // ── Nav helpers ───────────────────────────────────────────────────────────────
 function show(id){['splash','login','dashboard','admin'].forEach(s=>document.getElementById(s).classList.add('hidden'));document.getElementById(id).classList.remove('hidden');}
