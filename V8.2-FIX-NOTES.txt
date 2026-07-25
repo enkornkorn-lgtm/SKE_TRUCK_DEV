@@ -1,6 +1,0 @@
-V8.2 แก้บั๊กสำคัญ:
-1. ใส่ onValue(ref(db, '.info/connected')) กลับมาเพียงหนึ่งตัว
-2. ส่งค่า true/false เข้า window._setOnlineDot()
-3. เก็บ unsubscribe บน window เพื่อป้องกัน listener ซ้ำ
-4. เมื่อ listener error ให้ตั้งสถานะ offline และเขียน Debug Log
-5. bump Service Worker/cache เพื่อให้เครื่องรับไฟล์ใหม่
