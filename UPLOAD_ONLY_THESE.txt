@@ -1,4 +1,0 @@
-อัปไฟล์ทั้งหมดใน ZIP นี้ทับ Repository DEV ที่ root
-เวอร์ชันที่ต้องเห็น: v2026.07.25-connection-v7-sdk-reconnect-fix
-Firebase JS SDK: 12.14.0
-ห้ามนำขึ้น Production จนกว่าจะทดสอบ DEV ผ่าน
