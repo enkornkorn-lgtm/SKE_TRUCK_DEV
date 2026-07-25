@@ -198,7 +198,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await navigator.serviceWorker.register('sw.js');
+      const swReg = await (window.skeEnsureServiceWorker ? window.skeEnsureServiceWorker() : navigator.serviceWorker.register('sw.js', { scope: './' }));
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;

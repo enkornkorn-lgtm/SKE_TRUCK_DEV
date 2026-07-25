@@ -664,12 +664,48 @@ function doInstall(){
 // หมายเหตุ: Service Worker ทำงานได้เฉพาะบน HTTPS จริง (หรือ localhost) เท่านั้น
 // ตอนเปิดไฟล์ในพรีวิว/แบบ file:// จะข้ามการลงทะเบียนไปเงียบๆ ไม่ขึ้น error (ไม่กระทบการใช้งานอื่น)
 let _swReg = null;
-if ('serviceWorker' in navigator &&
-    (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+// ลงทะเบียน Service Worker ผ่านจุดเดียว ป้องกันการ register ซ้ำระหว่าง PWA และ FCM
+window.skeEnsureServiceWorker = window.skeEnsureServiceWorker || (() => {
+  let swPromise = null;
+  return function skeEnsureServiceWorker() {
+    if (!('serviceWorker' in navigator) ||
+        !(location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      return Promise.reject(new Error('Service Worker ใช้ได้เฉพาะ HTTPS/localhost'));
+    }
+    if (!swPromise) {
+      swPromise = navigator.serviceWorker.register('sw.js', { scope: './' }).then(async reg => {
+        try { await reg.update(); } catch (_) {}
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+              worker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+        return reg;
+      }).catch(err => {
+        swPromise = null;
+        throw err;
+      });
+    }
+    return swPromise;
+  };
+})();
+
+if ('serviceWorker' in navigator) {
+  let reloadingForNewSW = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadingForNewSW) return;
+    reloadingForNewSW = true;
+    location.reload();
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    window.skeEnsureServiceWorker().then(reg => {
       _swReg = reg;
-    }).catch(e => console.info('SW ยังไม่พร้อม (จะใช้งานได้เมื่ออัปขึ้นโฮสต์จริงพร้อมไฟล์ sw.js):', e.message));
+    }).catch(e => console.info('SW ยังไม่พร้อม:', e.message));
   });
 }
 const _SKE_ICON='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%231E90D6"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E';
