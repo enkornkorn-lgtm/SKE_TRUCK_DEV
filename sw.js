@@ -1,31 +1,27 @@
-// SKE TRUCK DEV Unified Service Worker — Connection V5.2 DEV
-// Scope-aware cache; network-first for HTML/JS/CSS; never caches Firebase traffic.
-const CACHE_PREFIX = 'ske-truck-dev-pwa-';
-const CACHE_NAME = CACHE_PREFIX + 'connection-v5-2-20260725';
-const CORE_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
+// SKE TRUCK Unified Service Worker v3
+// ใช้ตัวเดียวสำหรับ PWA cache + Firebase Cloud Messaging
+const CACHE_NAME = 'ske-truck-v3';
+const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
-importScripts('https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/12.16.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: "AIzaSyD9Tbm14DG31MYL9eB_0gYBY_tB9GiAyWw",
-  authDomain: "ske-truck-dev.firebaseapp.com",
-  databaseURL: "https://ske-truck-dev-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "ske-truck-dev",
-  storageBucket: "ske-truck-dev.firebasestorage.app",
-  messagingSenderId: "314092602910",
-  appId: "1:314092602910:web:67a73245abd287c2ddd00f"
+  apiKey: "AIzaSyDNx3pN0T_VKHMKfJOiuo5FmcZlVp73h8g",
+  authDomain: "ske-status-2.firebaseapp.com",
+  databaseURL: "https://ske-status-2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ske-status-2",
+  storageBucket: "ske-status-2.firebasestorage.app",
+  messagingSenderId: "170552278274",
+  appId: "1:170552278274:web:80f699b101cc1867c5161b"
 });
 const messaging = firebase.messaging();
 
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
-});
-
 self.addEventListener('install', event => {
+  // ไฟล์ใดไม่มีอยู่จะไม่ทำให้ SW ติดตั้งล้มเหลวทั้งชุด
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.allSettled(CORE_ASSETS.map(asset => cache.add(new Request(asset, { cache: 'reload' })))))
+      .then(cache => Promise.allSettled(STATIC_ASSETS.map(asset => cache.add(asset))))
       .then(() => self.skipWaiting())
   );
 });
@@ -33,78 +29,54 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys
-        .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
-        .map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
-
-function isFirebaseOrExternalApi(url) {
-  return url.hostname.includes('firebase') ||
-         url.hostname.includes('googleapis') ||
-         url.hostname.includes('gstatic') ||
-         url.protocol === 'chrome-extension:';
-}
-
-async function networkFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request, { cache: 'no-store' });
-    if (response && response.ok && response.type !== 'opaque') {
-      await cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    throw error;
-  }
-}
-
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  const update = fetch(request).then(response => {
-    if (response && response.ok && response.type !== 'opaque') cache.put(request, response.clone());
-    return response;
-  }).catch(() => null);
-  return cached || update;
-}
 
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (isFirebaseOrExternalApi(url)) return;
 
-  // Navigation must prefer the latest network copy; do not trap the app on stale HTML.
-  if (request.mode === 'navigate' || request.destination === 'document') {
-    event.respondWith(fetch(request, { cache: 'no-store' }));
+  // Firebase/API/HTML ต้องผ่าน network โดยตรง ไม่เก็บ response เก่า
+  if (url.hostname.includes('firebase') ||
+      url.hostname.includes('googleapis') ||
+      url.hostname.includes('gstatic') ||
+      request.mode === 'navigate' ||
+      request.destination === 'document') {
     return;
   }
 
-  // JS/CSS must prefer network, with cache only as an offline fallback.
-  if (request.destination === 'script' || request.destination === 'style') {
-    event.respondWith(networkFirst(request));
-    return;
-  }
+  // Cache เฉพาะไฟล์ static จริง
+  const allowed = ['script', 'style', 'image', 'font', 'manifest'];
+  if (!allowed.includes(request.destination)) return;
 
-  // Images/fonts/manifest may use cached copy while refreshing in background.
-  if (['image', 'font', 'manifest'].includes(request.destination)) {
-    event.respondWith(staleWhileRevalidate(request));
-  }
+  event.respondWith(
+    caches.match(request).then(cached => {
+      const network = fetch(request).then(response => {
+        if (response && response.ok && response.type !== 'opaque') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        }
+        return response;
+      });
+      return cached || network;
+    })
+  );
 });
 
 messaging.onBackgroundMessage(payload => {
+  // ถ้า FCM ส่ง notification payload เบราว์เซอร์อาจแสดงเองอยู่แล้ว
+  // โค้ดนี้รองรับ data-only และกำหนด fallback ที่สม่ำเสมอ
   const n = payload.notification || {};
-  const title = n.title || 'SKE TRUCK DEV';
+  const title = n.title || 'SKE TRUCK';
   const options = {
     body: n.body || '',
     icon: n.icon || './icon-192.png',
     badge: './icon-192.png',
     data: payload.data || {},
-    tag: (payload.data && payload.data.tag) || 'ske-dev-alert'
+    tag: (payload.data && payload.data.tag) || 'ske-alert'
   };
   return self.registration.showNotification(title, options);
 });

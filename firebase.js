@@ -1,98 +1,97 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, get, update, remove, forceLongPolling } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, get, update, remove, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyD9Tbm14DG31MYL9eB_0gYBY_tB9GiAyWw",
-    authDomain: "ske-truck-dev.firebaseapp.com",
-    databaseURL: "https://ske-truck-dev-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "ske-truck-dev",
-    storageBucket: "ske-truck-dev.firebasestorage.app",
-    messagingSenderId: "314092602910",
-    appId: "1:314092602910:web:67a73245abd287c2ddd00f"
+    apiKey: "AIzaSyDNx3pN0T_VKHMKfJOiuo5FmcZlVp73h8g",
+    authDomain: "ske-status-2.firebaseapp.com",
+    databaseURL: "https://ske-status-2-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "ske-status-2",
+    storageBucket: "ske-status-2.firebasestorage.app",
+    messagingSenderId: "170552278274",
+    appId: "1:170552278274:web:80f699b101cc1867c5161b"
   };
 
   const app = initializeApp(firebaseConfig);
-
-  // Android PWA บางเครื่องมีอาการ WebSocket ค้างหลังสลับ Wi‑Fi/4G หรือกลับจาก background
-  // จึงบังคับ RTDB ใช้ long-polling ซึ่งสร้างคำขอใหม่ได้ง่ายกว่าเมื่อเส้นทางเครือข่ายเปลี่ยน
-  // ต้องเรียกก่อน getDatabase() เท่านั้น
-  forceLongPolling();
   const db = getDatabase(app);
 
-  // ── ตัวควบคุมการเชื่อมต่อ V5.2 DEV ─────────────────────────────────────
-  // แก้จาก V5.1:
-  // - ใช้ Firebase SDK 12.16.0 (มีแพตช์ reconnect ที่ไม่มีใน 10.12.0)
-  // - ไม่เรียก goOffline()/goOnline() เองอีก เพราะเป็นการตัด connection โดยเจตนา
-  // - ใช้ soft refresh และ reload หน้าเพียงครั้งเดียวเมื่อ SDK ค้างนานจริง
+  // ── ตัวควบคุมการเชื่อมต่อ V2 ─────────────────────────────────────────────
+  // หลักการ: ไม่ตัด WebSocket ทุกครั้งที่กลับเข้าแอป ให้ Firebase ฟื้นตัวเองก่อน
+  // การ goOffline/goOnline ใช้เฉพาะเมื่อผู้ใช้แตะปุ่มลองใหม่ และ connection หลุดจริงเท่านั้น
   let _reconnecting = false;
-  let _recoveryTimer = null;
-  let _disconnectSince = 0;
-  const DISCONNECTED_GRACE_MS = 5000;
-  const STUCK_RELOAD_MS = 30000;
-  const RELOAD_GUARD_MS = 120000;
-  const RELOAD_GUARD_KEY = 'ske_v52_last_recovery_reload';
+  let _lastHardReconnectAt = 0;
+  const HARD_RECONNECT_COOLDOWN_MS = 15000;
 
   function _finishReconnect(result) {
-    if (!_reconnecting) return;
     _reconnecting = false;
     if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ผลลัพธ์: ' + result);
     if (typeof window._setReconnecting === 'function') window._setReconnecting(false);
   }
 
-  function _reloadIfStuck(source) {
-    if (!navigator.onLine || document.visibilityState !== 'visible' || window._fbConnected === true) return false;
-    const disconnectedFor = _disconnectSince ? Date.now() - _disconnectSince : 0;
-    if (disconnectedFor < STUCK_RELOAD_MS) return false;
-    const lastReload = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0);
-    if (Date.now() - lastReload < RELOAD_GUARD_MS) return false;
-    sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now()));
-    if (typeof window._skeDebugLog === 'function') {
-      window._skeDebugLog('Reconnect', 'SDK ค้างเกิน 30 วินาที — reload connection จาก ' + source);
-    }
-    location.reload();
-    return true;
-  }
-
-  window.forceReconnectNow = function(source = 'manual') {
-    if (_reconnecting || !navigator.onLine) return;
-    if (window._fbConnected === true) {
-      if (window.fbForceRefresh) window.fbForceRefresh(() => {});
+  window.forceReconnectNow = function(source){
+    if (_reconnecting) return;
+    if (!navigator.onLine) {
+      if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ยกเลิก: navigator.onLine=false');
       return;
     }
 
     _reconnecting = true;
     if (typeof window._setReconnecting === 'function') window._setReconnecting(true);
-    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'เริ่ม soft recovery จาก ' + source);
+    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', source === 'resume' ? 'soft refresh หลังกลับเข้าแอป' : 'ผู้ใช้แตะลองเชื่อมต่อใหม่');
 
-    let finished = false;
-    const finish = msg => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(safetyTimer);
-      _finishReconnect(msg);
-    };
-    const safetyTimer = setTimeout(() => {
-      if (!_reloadIfStuck(source)) finish('ยังไม่ต่อ — รอ SDK reconnect ต่อ');
-    }, 10000);
+    const safetyTimer = setTimeout(() => _finishReconnect('timeout หลัง 15 วินาที'), 15000);
+    const finish = (msg) => { clearTimeout(safetyTimer); _finishReconnect(msg); };
 
-    if (window.fbForceRefresh) {
-      window.fbForceRefresh(ok => {
-        if (ok || window._fbConnected === true) finish('soft refresh สำเร็จ');
-        else if (!_reloadIfStuck(source)) finish('soft refresh ไม่สำเร็จ — รอ SDK');
-      });
-    } else {
-      finish('ยังไม่มีฟังก์ชัน refresh — รอ SDK');
+    // ตอน resume ทำแค่ดึงข้อมูลใหม่ ห้ามตัด connection เดิม
+    if (source === 'resume') {
+      if (!window.fbForceRefresh) { finish('ไม่มี fbForceRefresh'); return; }
+      window.fbForceRefresh(ok => finish(ok ? 'soft refresh สำเร็จ' : 'soft refresh ไม่สำเร็จ — รอ SDK ต่อเอง'));
+      return;
     }
+
+    // ปุ่มลองใหม่: ลองอ่านข้อมูลก่อน ถ้าอ่านได้ก็ไม่ต้อง reset socket
+    const softThenHard = () => {
+      if (!window.fbForceRefresh) { hardReconnect(); return; }
+      window.fbForceRefresh(ok => {
+        if (ok && window._fbConnected === true) { finish('เชื่อมต่ออยู่แล้ว'); return; }
+        hardReconnect();
+      });
+    };
+
+    const hardReconnect = () => {
+      const now = Date.now();
+      if (now - _lastHardReconnectAt < HARD_RECONNECT_COOLDOWN_MS) {
+        finish('เว้นช่วง hard reconnect เพื่อไม่ให้ตัดต่อรัว');
+        return;
+      }
+      _lastHardReconnectAt = now;
+      try {
+        goOffline(db);
+        setTimeout(() => {
+          goOnline(db);
+          // รอ SDK handshake แล้วตรวจ connection; ไม่ reload หน้าอัตโนมัติ
+          let checks = 0;
+          const timer = setInterval(() => {
+            checks++;
+            if (window._fbConnected === true) {
+              clearInterval(timer);
+              if (window.fbForceRefresh) window.fbForceRefresh(() => finish('hard reconnect สำเร็จ'));
+              else finish('hard reconnect สำเร็จ');
+            } else if (checks >= 8) {
+              clearInterval(timer);
+              finish('ยังเชื่อมไม่ได้ — กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่');
+            }
+          }, 1000);
+        }, 600);
+      } catch(e) {
+        console.error('forceReconnectNow error', e);
+        finish('exception: ' + (e.message || e));
+      }
+    };
+
+    softThenHard();
   };
 
-  window._skeScheduleRecovery = function(source = 'auto', delay = DISCONNECTED_GRACE_MS) {
-    clearTimeout(_recoveryTimer);
-    if (!navigator.onLine || window._fbConnected === true) return;
-    _recoveryTimer = setTimeout(() => {
-      if (navigator.onLine && window._fbConnected === false) window.forceReconnectNow(source);
-    }, delay);
-  };
   // ══ ระบบเก็บ log ปัญหาจริงในเครื่อง — ดูได้จากในแอพเลย ไม่ต้องต่อคอมพิวเตอร์/USB debugging ══
   // เก็บ error จริงที่ Chrome เจอ + เหตุการณ์เชื่อมต่อสำคัญ ไว้ดูย้อนหลังตอนแบนเนอร์แดงค้าง
   const SKE_DEBUG_LOG_KEY = 'ske_debug_log';
@@ -185,9 +184,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/fireba
   })();
 
 
-  // DEV: ปิดการลงทะเบียน Push ชั่วคราว จนกว่าจะสร้าง Web Push certificate ของโปรเจกต์ DEV
-  // เพื่อป้องกันการใช้ VAPID key ของ Production กับ Firebase DEV
-  const VAPID_KEY = "PASTE_YOUR_VAPID_KEY_HERE";
+  // ✅ VAPID key ของโปรเจกต์ ske-status-2 (ใส่แล้ว 16/07/2569)
+  const VAPID_KEY = "BP2BuLTCkxjZKw8o_Htq7jvlSIY2Uc0x6eMywhCEFirDmNGmXIPRTXhNfsVCG7RwnK3FWphgMn7eVdi9AQyjzFs";
   let _messaging = null;
 
   // ขอ permission + ลงทะเบียน FCM token ของเครื่องนี้ขึ้น Firebase
@@ -199,7 +197,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/fireba
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await (window.skeEnsureServiceWorker ? window.skeEnsureServiceWorker() : navigator.serviceWorker.register('sw.js', { scope: './' }));
+      const swReg = await navigator.serviceWorker.register('sw.js');
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -351,7 +349,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/fireba
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[SKE TRUCK] app version: v2026.07.25-connection-v5.2-dev');
+  console.log('[SKE TRUCK] app version: v2026.07.24-connection-v3.1-rollback');
   const SKE_OUTBOX_KEY = 'ske_outbox_v1';
   // งานค้างมีอายุจำกัด — เกินนี้ให้ "ทิ้ง" แทนที่จะส่งซ้ำ เพราะ payload เป็นข้อมูลทั้งชุด ณ เวลานั้น
   // ถ้าปล่อยให้คิวเก่าหลายนาที/ชั่วโมงส่งสำเร็จทีหลัง มันจะเอาข้อมูล "ทั้งก้อนเวอร์ชันเก่า" ทับขึ้นเซิร์ฟเวอร์
@@ -843,15 +841,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/fireba
   onValue(ref(db, '.info/connected'), (snap) => {
     const connected = snap.val() === true;
     window._fbConnected = connected;
-    if (connected) {
-      _disconnectSince = 0;
-      clearTimeout(_recoveryTimer);
-    } else {
-      if (!_disconnectSince) _disconnectSince = Date.now();
-      if (navigator.onLine && typeof window._skeScheduleRecovery === 'function') {
-        window._skeScheduleRecovery('info-connected-false', DISCONNECTED_GRACE_MS);
-      }
-    }
     if (connected && !_wasConnected) {
       _obFlushAll();
       // เพิ่งกลับมาเชื่อมต่อได้ → sync ข้อมูลทุกชุดทันที (onValue จะ replay ให้เองอยู่แล้ว แต่ get ย้ำให้ชัวร์+เร็ว)
