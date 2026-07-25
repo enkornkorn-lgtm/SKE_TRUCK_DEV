@@ -1,6 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, get, update, remove, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, get, update, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDNx3pN0T_VKHMKfJOiuo5FmcZlVp73h8g",
@@ -15,15 +15,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // ── ตัวควบคุมการเชื่อมต่อ V2 ─────────────────────────────────────────────
-  // หลักการ: ไม่ตัด WebSocket ทุกครั้งที่กลับเข้าแอป ให้ Firebase ฟื้นตัวเองก่อน
-  // การ goOffline/goOnline ใช้เฉพาะเมื่อผู้ใช้แตะปุ่มลองใหม่ และ connection หลุดจริงเท่านั้น
+  // ── ตัวควบคุมการเชื่อมต่อ V7 ─────────────────────────────────────────────
+  // ใช้ Firebase SDK รุ่นใหม่ที่มีการแก้ปัญหา reconnect delay แล้ว
+  // ไม่เรียก goOffline()/goOnline(), ไม่ reload หน้า และไม่ล้าง cache
   let _reconnecting = false;
-  let _lastHardReconnectAt = 0;
-  const HARD_RECONNECT_COOLDOWN_MS = 15000;
+  let _reconnectWatchTimer = null;
 
   function _finishReconnect(result) {
     _reconnecting = false;
+    clearInterval(_reconnectWatchTimer);
+    _reconnectWatchTimer = null;
     if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ผลลัพธ์: ' + result);
     if (typeof window._setReconnecting === 'function') window._setReconnecting(false);
   }
@@ -37,59 +38,31 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
     _reconnecting = true;
     if (typeof window._setReconnecting === 'function') window._setReconnecting(true);
-    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', source === 'resume' ? 'soft refresh หลังกลับเข้าแอป' : 'ผู้ใช้แตะลองเชื่อมต่อใหม่');
+    if (typeof window._skeDebugLog === 'function') {
+      window._skeDebugLog('Reconnect', 'เริ่ม V7 SDK recovery จาก ' + (source || 'manual'));
+    }
 
-    const safetyTimer = setTimeout(() => _finishReconnect('timeout หลัง 15 วินาที'), 15000);
-    const finish = (msg) => { clearTimeout(safetyTimer); _finishReconnect(msg); };
-
-    // ตอน resume ทำแค่ดึงข้อมูลใหม่ ห้ามตัด connection เดิม
-    if (source === 'resume') {
-      if (!window.fbForceRefresh) { finish('ไม่มี fbForceRefresh'); return; }
-      window.fbForceRefresh(ok => finish(ok ? 'soft refresh สำเร็จ' : 'soft refresh ไม่สำเร็จ — รอ SDK ต่อเอง'));
+    if (window._fbConnected === true) {
+      _finishReconnect('เชื่อมต่ออยู่แล้ว');
       return;
     }
 
-    // ปุ่มลองใหม่: ลองอ่านข้อมูลก่อน ถ้าอ่านได้ก็ไม่ต้อง reset socket
-    const softThenHard = () => {
-      if (!window.fbForceRefresh) { hardReconnect(); return; }
-      window.fbForceRefresh(ok => {
-        if (ok && window._fbConnected === true) { finish('เชื่อมต่ออยู่แล้ว'); return; }
-        hardReconnect();
-      });
-    };
-
-    const hardReconnect = () => {
-      const now = Date.now();
-      if (now - _lastHardReconnectAt < HARD_RECONNECT_COOLDOWN_MS) {
-        finish('เว้นช่วง hard reconnect เพื่อไม่ให้ตัดต่อรัว');
+    // Firebase RTDB จะ reconnect เองเมื่อ network กลับมา
+    // เราเฝ้าดู .info/connected เท่านั้น เพื่อไม่แทรกแซง transport ของ SDK
+    const startedAt = Date.now();
+    _reconnectWatchTimer = setInterval(() => {
+      if (window._fbConnected === true) {
+        _finishReconnect('SDK reconnect สำเร็จใน ' + Math.ceil((Date.now() - startedAt) / 1000) + ' วินาที');
         return;
       }
-      _lastHardReconnectAt = now;
-      try {
-        goOffline(db);
-        setTimeout(() => {
-          goOnline(db);
-          // รอ SDK handshake แล้วตรวจ connection; ไม่ reload หน้าอัตโนมัติ
-          let checks = 0;
-          const timer = setInterval(() => {
-            checks++;
-            if (window._fbConnected === true) {
-              clearInterval(timer);
-              if (window.fbForceRefresh) window.fbForceRefresh(() => finish('hard reconnect สำเร็จ'));
-              else finish('hard reconnect สำเร็จ');
-            } else if (checks >= 8) {
-              clearInterval(timer);
-              finish('ยังเชื่อมไม่ได้ — กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่');
-            }
-          }, 1000);
-        }, 600);
-      } catch(e) {
-        console.error('forceReconnectNow error', e);
-        finish('exception: ' + (e.message || e));
+      if (!navigator.onLine) {
+        _finishReconnect('เครือข่ายของเครื่องหลุด');
+        return;
       }
-    };
-
-    softThenHard();
+      if (Date.now() - startedAt >= 30000) {
+        _finishReconnect('timeout 30 วินาที — SDK ยังไม่ต่อ (ไม่มี reload วน)');
+      }
+    }, 1000);
   };
 
   // ══ ระบบเก็บ log ปัญหาจริงในเครื่อง — ดูได้จากในแอพเลย ไม่ต้องต่อคอมพิวเตอร์/USB debugging ══
@@ -184,6 +157,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   })();
 
 
+  // ลงทะเบียน Service Worker ผ่านฟังก์ชันเดียว ป้องกัน register ซ้ำระหว่าง PWA กับ FCM
+  let _skeSwRegistrationPromise = null;
+  window.getSkeServiceWorkerRegistration = function(){
+    if (!('serviceWorker' in navigator)) return Promise.reject(new Error('service worker unsupported'));
+    if (!_skeSwRegistrationPromise) {
+      _skeSwRegistrationPromise = navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+        .then(reg => { reg.update().catch(() => {}); return reg; });
+    }
+    return _skeSwRegistrationPromise;
+  };
+
   // ✅ VAPID key ของโปรเจกต์ ske-status-2 (ใส่แล้ว 16/07/2569)
   const VAPID_KEY = "BP2BuLTCkxjZKw8o_Htq7jvlSIY2Uc0x6eMywhCEFirDmNGmXIPRTXhNfsVCG7RwnK3FWphgMn7eVdi9AQyjzFs";
   let _messaging = null;
@@ -197,7 +181,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await navigator.serviceWorker.register('sw.js');
+      const swReg = await window.getSkeServiceWorkerRegistration();
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -349,7 +333,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[SKE TRUCK] app version: v2026.07.24-connection-v3.1-rollback');
+  console.log('[SKE TRUCK] app version: v2026.07.25-connection-v7-sdk-reconnect-fix');
   const SKE_OUTBOX_KEY = 'ske_outbox_v1';
   // งานค้างมีอายุจำกัด — เกินนี้ให้ "ทิ้ง" แทนที่จะส่งซ้ำ เพราะ payload เป็นข้อมูลทั้งชุด ณ เวลานั้น
   // ถ้าปล่อยให้คิวเก่าหลายนาที/ชั่วโมงส่งสำเร็จทีหลัง มันจะเอาข้อมูล "ทั้งก้อนเวอร์ชันเก่า" ทับขึ้นเซิร์ฟเวอร์
@@ -472,7 +456,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     // - เน็ตเครื่องหลุดจริง (navigator.onLine=false) → โชว์แดงทันที ไม่ต้องรอ
     // - แค่ websocket Firebase สะดุด (navigator.onLine=true) → รอ debounce ก่อนค่อยโชว์ กันกระตุกสั้นๆ
     // - กลับมาออนไลน์ → รอ debounce สั้นๆ ก่อนซ่อน กัน flap ซ้ำถี่ๆ
-    const DISCONNECT_DEBOUNCE_MS = 4000; // ต้องหลุดต่อเนื่องเกินนี้ถึงจะถือว่าหลุดจริง (ถ้า navigator.onLine ยัง true)
+    const DISCONNECT_DEBOUNCE_MS = 12000; // ต้องหลุดต่อเนื่องเกินนี้ถึงจะถือว่าหลุดจริง (ถ้า navigator.onLine ยัง true)
     const RECONNECT_DEBOUNCE_MS = 1000;  // รอสั้นๆ ก่อนซ่อนแดง กัน flap ซ้ำ
     let disconnectTimer = null, reconnectTimer = null;
     window._fbConnected = true; // ค่าเริ่มต้น เผื่อ listener ยังไม่ยิง event แรก
@@ -657,7 +641,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
         vehicles = vdata;
         localStorage.setItem('ske_vehicles', JSON.stringify(vehicles));
       }
-      if (typeof cb === 'function') cb(true);
+      if (typeof cb === 'function') cb(window._fbConnected === true);
     }).catch(e => {
       console.error('fbForceRefresh error', e);
       if (typeof cb === 'function') cb(false);
