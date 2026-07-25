@@ -3,13 +3,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyDNx3pN0T_VKHMKfJOiuo5FmcZlVp73h8g",
-    authDomain: "ske-status-2.firebaseapp.com",
-    databaseURL: "https://ske-status-2-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "ske-status-2",
-    storageBucket: "ske-status-2.firebasestorage.app",
-    messagingSenderId: "170552278274",
-    appId: "1:170552278274:web:80f699b101cc1867c5161b"
+    apiKey: "AIzaSyD9Tbm14DG31MYL9eB_0gYBY_tB9GiAyWw",
+    authDomain: "ske-truck-dev.firebaseapp.com",
+    databaseURL: "https://ske-truck-dev-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "ske-truck-dev",
+    storageBucket: "ske-truck-dev.firebasestorage.app",
+    messagingSenderId: "314092602910",
+    appId: "1:314092602910:web:67a73245abd287c2ddd00f"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -184,8 +184,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   })();
 
 
-  // ✅ VAPID key ของโปรเจกต์ ske-status-2 (ใส่แล้ว 16/07/2569)
-  const VAPID_KEY = "BP2BuLTCkxjZKw8o_Htq7jvlSIY2Uc0x6eMywhCEFirDmNGmXIPRTXhNfsVCG7RwnK3FWphgMn7eVdi9AQyjzFs";
+  // DEV: ปิดการลงทะเบียน Push ชั่วคราว จนกว่าจะสร้าง Web Push certificate ของโปรเจกต์ DEV
+  // เพื่อป้องกันการใช้ VAPID key ของ Production กับ Firebase DEV
+  const VAPID_KEY = "PASTE_YOUR_VAPID_KEY_HERE";
   let _messaging = null;
 
   // ขอ permission + ลงทะเบียน FCM token ของเครื่องนี้ขึ้น Firebase
