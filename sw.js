@@ -1,7 +1,7 @@
 // SKE TRUCK Unified Service Worker V8
 const CACHE_PREFIX = 'ske-truck-';
-const CACHE_NAME = CACHE_PREFIX + 'v8-1-20260725';
-const STATIC_ASSETS = ['./manifest.json?v=8.1', './icon-192.png', './icon-512.png', './ske-logo.png'];
+const CACHE_NAME = CACHE_PREFIX + 'v8-2-20260725';
+const STATIC_ASSETS = ['./manifest.json?v=8.2', './icon-192.png', './icon-512.png', './ske-logo.png'];
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
