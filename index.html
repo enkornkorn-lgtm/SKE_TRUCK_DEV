@@ -33,9 +33,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SKE TRUCK">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#000000">
-<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="manifest" href="manifest.json?v=dev-v31-reconnect-logo-v1">
 <title>SKE TRUCK</title>
 <!-- Firebase SDK -->
 <script type="module">
@@ -55,6 +55,85 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
+
+  // ── DEV RECONNECT HANDOFF V1 ─────────────────────────────────────────────
+  // ใช้เมื่อ Android Chrome สลับ Wi‑Fi/4G แล้ว RTDB socket ค้าง false
+  // รอ Firebase SDK ต่อเองก่อน, ตรวจว่า REST ถึง Firebase ได้จริง,
+  // แล้วจึง reset socket เพียงครั้งเดียวต่อรอบ พร้อม cooldown
+  let _handoffTimer = null;
+  let _handoffRunning = false;
+  let _handoffLastResetAt = 0;
+  let _handoffEverConnected = false;
+  const HANDOFF_GRACE_MS = 7000;
+  const HANDOFF_COOLDOWN_MS = 60000;
+
+  async function _handoffProbeFirebase(){
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    try {
+      const probeUrl = firebaseConfig.databaseURL + '/.json?shallow=true&_ske_handoff=' + Date.now();
+      const response = await fetch(probeUrl, { cache:'no-store', signal:controller.signal });
+      return response.ok || response.status === 401 || response.status === 403;
+    } catch (_) {
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  function _cancelHandoffTimer(){
+    if (_handoffTimer) {
+      clearTimeout(_handoffTimer);
+      _handoffTimer = null;
+    }
+  }
+
+  async function _runHandoffRecovery(source){
+    if (_handoffRunning) return;
+    if (!_handoffEverConnected) return;
+    if (navigator.onLine === false || window._fbConnected === true) return;
+    if (document.visibilityState !== 'visible') return;
+    if (Date.now() - _handoffLastResetAt < HANDOFF_COOLDOWN_MS) return;
+
+    _handoffRunning = true;
+    try {
+      const reachable = await _handoffProbeFirebase();
+      if (!reachable || navigator.onLine === false || window._fbConnected === true) return;
+
+      _handoffLastResetAt = Date.now();
+      if (typeof window._skeDebugLog === 'function') {
+        window._skeDebugLog('Network handoff', source + ' — REST ถึง Firebase แต่ RTDB socket ยังไม่กลับ');
+      }
+
+      // reset เฉพาะหลังยืนยันว่าอินเทอร์เน็ตและ Firebase REST ใช้งานได้
+      goOffline(db);
+      await new Promise(resolve => setTimeout(resolve, 650));
+      goOnline(db);
+    } catch (e) {
+      console.error('handoff recovery error', e);
+    } finally {
+      _handoffRunning = false;
+    }
+  }
+
+  function _scheduleHandoffRecovery(source){
+    _cancelHandoffTimer();
+    if (!_handoffEverConnected) return;
+    if (navigator.onLine === false || window._fbConnected === true) return;
+
+    _handoffTimer = setTimeout(() => {
+      _handoffTimer = null;
+      _runHandoffRecovery(source);
+    }, HANDOFF_GRACE_MS);
+  }
+
+  window.addEventListener('online', () => _scheduleHandoffRecovery('online'));
+  window.addEventListener('focus', () => _scheduleHandoffRecovery('focus'));
+  window.addEventListener('pageshow', () => _scheduleHandoffRecovery('pageshow'));
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _scheduleHandoffRecovery('visibility-visible');
+    else _cancelHandoffTimer();
+  });
 
   // ── ตัวควบคุมการเชื่อมต่อ V2 ─────────────────────────────────────────────
   // หลักการ: ไม่ตัด WebSocket ทุกครั้งที่กลับเข้าแอป ให้ Firebase ฟื้นตัวเองก่อน
@@ -238,7 +317,7 @@
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await navigator.serviceWorker.register('sw.js');
+      const swReg = await navigator.serviceWorker.register('sw.js?v=dev-v31-reconnect-logo-v1');
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -390,7 +469,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[SKE TRUCK] app version: v2026.07.24-connection-v3.1-rollback');
+  console.log('[SKE TRUCK] app version: v2026.07.26-dev-v3.1-reconnect-logo-v1');
   const SKE_OUTBOX_KEY = 'ske_outbox_v1';
   // งานค้างมีอายุจำกัด — เกินนี้ให้ "ทิ้ง" แทนที่จะส่งซ้ำ เพราะ payload เป็นข้อมูลทั้งชุด ณ เวลานั้น
   // ถ้าปล่อยให้คิวเก่าหลายนาที/ชั่วโมงส่งสำเร็จทีหลัง มันจะเอาข้อมูล "ทั้งก้อนเวอร์ชันเก่า" ทับขึ้นเซิร์ฟเวอร์
@@ -882,6 +961,13 @@
   onValue(ref(db, '.info/connected'), (snap) => {
     const connected = snap.val() === true;
     window._fbConnected = connected;
+    if (connected) {
+      _handoffEverConnected = true;
+      _cancelHandoffTimer();
+    } else if (_handoffEverConnected && navigator.onLine !== false &&
+               document.visibilityState === 'visible') {
+      _scheduleHandoffRecovery('info-connected-false');
+    }
     if (connected && !_wasConnected) {
       _obFlushAll();
       // เพิ่งกลับมาเชื่อมต่อได้ → sync ข้อมูลทุกชุดทันที (onValue จะ replay ให้เองอยู่แล้ว แต่ get ย้ำให้ชัวร์+เร็ว)
@@ -1193,7 +1279,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html{height:100%;height:-webkit-fill-available;}
-body{font-family:'Noto Sans Thai','Sarabun',sans-serif;background:#000;color:#1a1a2e;height:100%;height:-webkit-fill-available;overscroll-behavior:none;}
+body{font-family:'Noto Sans Thai','Sarabun',sans-serif;background:#fff;color:#1a1a2e;height:100%;height:-webkit-fill-available;overscroll-behavior:none;}
 button{font-family:'Noto Sans Thai','Sarabun',sans-serif;cursor:pointer;border:none;outline:none;}
 input,textarea,select{font-family:'Noto Sans Thai','Sarabun',sans-serif;outline:none;}
 textarea{resize:none;}
@@ -1201,7 +1287,7 @@ textarea{resize:none;}
 .hidden{display:none!important;}
 
 /* ── Splash ── */
-#splash{background:#000;align-items:center;justify-content:center;gap:20px;}
+#splash{background:#fff;align-items:center;justify-content:center;gap:20px;}
 .splash-logo{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#F47920,#1E90D6,#7B2FBE);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(244,121,32,.35),0 4px 16px rgba(30,144,214,.2);}
 .splash-logo span{color:#fff;font-weight:900;font-size:34px;letter-spacing:-1px;}
 .splash-title{font-size:26px;font-weight:800;color:#1a1a2e;letter-spacing:1px;}
@@ -1215,7 +1301,7 @@ textarea{resize:none;}
 
 /* ══ Premium video intro splash by ChatGPT ═════════════════════════════ */
 #splash.ske-intro-screen{
-  position:fixed;inset:0;z-index:99999;background:#000;overflow:hidden;
+  position:fixed;inset:0;z-index:99999;background:#fff;overflow:hidden;
   display:flex!important;align-items:center;justify-content:center;color:#fff;
 }
 .ske-intro-video{position:absolute;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000;filter:saturate(1.08) contrast(1.04);} 
@@ -1231,7 +1317,7 @@ textarea{resize:none;}
 @keyframes skeIntroOut{to{opacity:0;visibility:hidden}}
 /* Final intro cleanup: video only, no logo/text/buttons */
 .ske-intro-brand,.ske-intro-sound,#skeIntroSkip,#splashInstallBtn{display:none!important;}
-#splash.ske-intro-screen{background:#000!important;}
+#splash.ske-intro-screen{background:#fff!important;}
 
 @media (orientation:landscape){.ske-intro-brand{bottom:28px;width:min(48vw,320px)}.ske-intro-brand img{width:min(34vw,190px)}}
 
@@ -1873,7 +1959,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.24-connection-v3.1-rollback</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.26-dev-v3.1-reconnect-logo-v1</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -1881,7 +1967,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">สถานะรถ SKE</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">SK EVO LOGISTICS · v2026.07.24-connection-v3.1-rollback</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">SK EVO LOGISTICS · v2026.07.26-dev-v3.1-reconnect-logo-v1</div>
       </div>
     </div>
 
@@ -1999,7 +2085,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.24-connection-v3.1-rollback</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.26-dev-v3.1-reconnect-logo-v1</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -2255,7 +2341,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.24-connection-v3.1-rollback</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.26-dev-v3.1-reconnect-logo-v1</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -2883,7 +2969,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.24-connection-v3.1-rollback';
+const SKE_APP_VERSION='v2026.07.26-dev-v3.1-reconnect-logo-v1';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -3304,7 +3390,7 @@ let _swReg = null;
 if ('serviceWorker' in navigator &&
     (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    navigator.serviceWorker.register('sw.js?v=dev-v31-reconnect-logo-v1').then(reg => {
       _swReg = reg;
     }).catch(e => console.info('SW ยังไม่พร้อม (จะใช้งานได้เมื่ออัปขึ้นโฮสต์จริงพร้อมไฟล์ sw.js):', e.message));
   });

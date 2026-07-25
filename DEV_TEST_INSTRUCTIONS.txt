@@ -1,0 +1,14 @@
+DEV ONLY — V3.1 Reconnect + Logo Splash V1
+
+แก้ 2 เรื่องเท่านั้น:
+1) สลับ Wi‑Fi/4G แล้ว RTDB socket ค้าง: รอ 7 วินาที, probe Firebase REST, จากนั้น reset socket 1 ครั้ง และมี cooldown 60 วินาที
+2) หน้าดำตอนเปิด: เปลี่ยนพื้นเริ่มต้นและ theme เป็นสีขาว พร้อมแสดง ske-logo.png
+
+ทดสอบใน DEV ก่อนเท่านั้น:
+- เปิดแอปใหม่ ต้องเห็นโลโก้ทันที ไม่เห็นจอดำ
+- Wi‑Fi → 4G → Wi‑Fi หลายรอบ
+- Airplane mode 20 วินาทีแล้วปิด
+- Background 2–5 นาทีแล้วกลับเข้าแอป
+- หลัง reconnect ต้องอ่านและบันทึกข้อมูลได้จริง
+
+เวอร์ชัน: v2026.07.26-dev-v3.1-reconnect-logo-v1

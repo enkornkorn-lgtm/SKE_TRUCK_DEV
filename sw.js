@@ -1,6 +1,6 @@
 // SKE TRUCK Unified Service Worker v3
 // ใช้ตัวเดียวสำหรับ PWA cache + Firebase Cloud Messaging
-const CACHE_NAME = 'ske-truck-v3';
+const CACHE_NAME = 'ske-truck-dev-v31-reconnect-logo-v1';
 const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
