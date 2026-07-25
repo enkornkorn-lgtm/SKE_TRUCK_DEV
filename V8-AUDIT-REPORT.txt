@@ -1,0 +1,13 @@
+SKE TRUCK V8 — Listener Load Fix
+
+แก้จากหลักฐานที่หน้า rtdb-test.html reconnect ปกติ แต่แอปหลักค้าง:
+1. ตัด startup get() ที่ซ้ำกับ onValue() สำหรับ employees/repairs/fluid/cash/monthlyDocs/jobPlan/templates/feedbacks
+2. ตัด get(employees) และ _obFlushAll() ทันทีเมื่อ .info/connected กลับเป็น true
+3. รอ connection นิ่ง 15 วินาทีก่อน flush offline queue
+4. ห้าม seed localStorage กลับ Firebase อัตโนมัติเมื่อ snapshot ว่าง
+5. visibilitychange ไม่สั่ง reconnect/reload/socket reset อีก
+6. ไม่ใช้ goOffline()/goOnline()
+7. เพิ่ม debounce แบนเนอร์แดงเป็น 12 วินาที
+8. index.html, firebase.js, app.js และ sw.js เป็นชุดเดียวกัน
+
+ทดสอบ DEV เท่านั้น ห้ามขึ้น Production จนกว่าจะผ่านการสลับ Wi-Fi/4G และ background อย่างน้อย 20 รอบ

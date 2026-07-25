@@ -35,13 +35,13 @@
 <meta name="apple-mobile-web-app-title" content="SKE TRUCK">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
-<link rel="manifest" href="manifest.json?v=7">
+<link rel="manifest" href="manifest.json?v=8">
 <title>SKE TRUCK</title>
 <!-- Firebase SDK -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, get, update, remove } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-database.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, get, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDNx3pN0T_VKHMKfJOiuo5FmcZlVp73h8g",
@@ -56,54 +56,23 @@
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
 
-  // ── ตัวควบคุมการเชื่อมต่อ V7 ─────────────────────────────────────────────
-  // ใช้ Firebase SDK รุ่นใหม่ที่มีการแก้ปัญหา reconnect delay แล้ว
-  // ไม่เรียก goOffline()/goOnline(), ไม่ reload หน้า และไม่ล้าง cache
-  let _reconnecting = false;
+  // ── ตัวควบคุมการเชื่อมต่อ V8 ─────────────────────────────────────────────
+  // ไม่ตัด socket, ไม่ reload, ไม่ล้าง cache และไม่ยิง read ซ้ำระหว่าง reconnect
   let _reconnectWatchTimer = null;
-
-  function _finishReconnect(result) {
-    _reconnecting = false;
-    clearInterval(_reconnectWatchTimer);
-    _reconnectWatchTimer = null;
-    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ผลลัพธ์: ' + result);
-    if (typeof window._setReconnecting === 'function') window._setReconnecting(false);
-  }
-
   window.forceReconnectNow = function(source){
-    if (_reconnecting) return;
-    if (!navigator.onLine) {
-      if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ยกเลิก: navigator.onLine=false');
-      return;
-    }
-
-    _reconnecting = true;
-    if (typeof window._setReconnecting === 'function') window._setReconnecting(true);
-    if (typeof window._skeDebugLog === 'function') {
-      window._skeDebugLog('Reconnect', 'เริ่ม V7 SDK recovery จาก ' + (source || 'manual'));
-    }
-
-    if (window._fbConnected === true) {
-      _finishReconnect('เชื่อมต่ออยู่แล้ว');
-      return;
-    }
-
-    // Firebase RTDB จะ reconnect เองเมื่อ network กลับมา
-    // เราเฝ้าดู .info/connected เท่านั้น เพื่อไม่แทรกแซง transport ของ SDK
-    const startedAt = Date.now();
-    _reconnectWatchTimer = setInterval(() => {
+    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'V8 รอ SDK reconnect จาก ' + (source || 'manual'));
+    if (window._fbConnected === true) return;
+    clearInterval(_reconnectWatchTimer);
+    const started = Date.now();
+    _reconnectWatchTimer = setInterval(()=>{
       if (window._fbConnected === true) {
-        _finishReconnect('SDK reconnect สำเร็จใน ' + Math.ceil((Date.now() - startedAt) / 1000) + ' วินาที');
-        return;
+        clearInterval(_reconnectWatchTimer); _reconnectWatchTimer = null;
+        if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'SDK reconnect สำเร็จใน ' + Math.ceil((Date.now()-started)/1000) + ' วินาที');
+      } else if (Date.now()-started >= 30000) {
+        clearInterval(_reconnectWatchTimer); _reconnectWatchTimer = null;
+        if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'timeout 30 วินาที — ไม่มีการตัดต่อ socket เพิ่ม');
       }
-      if (!navigator.onLine) {
-        _finishReconnect('เครือข่ายของเครื่องหลุด');
-        return;
-      }
-      if (Date.now() - startedAt >= 30000) {
-        _finishReconnect('timeout 30 วินาที — SDK ยังไม่ต่อ (ไม่มี reload วน)');
-      }
-    }, 1000);
+    },1000);
   };
 
   // ══ ระบบเก็บ log ปัญหาจริงในเครื่อง — ดูได้จากในแอพเลย ไม่ต้องต่อคอมพิวเตอร์/USB debugging ══
@@ -198,17 +167,6 @@
   })();
 
 
-  // ลงทะเบียน Service Worker ผ่านฟังก์ชันเดียว ป้องกัน register ซ้ำระหว่าง PWA กับ FCM
-  let _skeSwRegistrationPromise = null;
-  window.getSkeServiceWorkerRegistration = function(){
-    if (!('serviceWorker' in navigator)) return Promise.reject(new Error('service worker unsupported'));
-    if (!_skeSwRegistrationPromise) {
-      _skeSwRegistrationPromise = navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
-        .then(reg => { reg.update().catch(() => {}); return reg; });
-    }
-    return _skeSwRegistrationPromise;
-  };
-
   // ✅ VAPID key ของโปรเจกต์ ske-status-2 (ใส่แล้ว 16/07/2569)
   const VAPID_KEY = "BP2BuLTCkxjZKw8o_Htq7jvlSIY2Uc0x6eMywhCEFirDmNGmXIPRTXhNfsVCG7RwnK3FWphgMn7eVdi9AQyjzFs";
   let _messaging = null;
@@ -222,7 +180,7 @@
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await window.getSkeServiceWorkerRegistration();
+      const swReg = await navigator.serviceWorker.register('sw.js');
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -374,7 +332,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[SKE TRUCK] app version: v2026.07.25-connection-v7-sdk-reconnect-fix');
+  console.log('[SKE TRUCK] app version: v2026.07.24-connection-v3.1-rollback');
   const SKE_OUTBOX_KEY = 'ske_outbox_v1';
   // งานค้างมีอายุจำกัด — เกินนี้ให้ "ทิ้ง" แทนที่จะส่งซ้ำ เพราะ payload เป็นข้อมูลทั้งชุด ณ เวลานั้น
   // ถ้าปล่อยให้คิวเก่าหลายนาที/ชั่วโมงส่งสำเร็จทีหลัง มันจะเอาข้อมูล "ทั้งก้อนเวอร์ชันเก่า" ทับขึ้นเซิร์ฟเวอร์
@@ -434,7 +392,10 @@
       else if (key === 'feedbacks' && window.fbSaveFeedbacks) window.fbSaveFeedbacks(entry.payload);
     });
   }
-  setInterval(() => { if (Object.keys(_obLoad()).length > 0) _obFlushAll(); }, 8000);
+  let _fbConnectedAt = 0;
+  setInterval(() => {
+    if (window._fbConnected === true && Date.now() - _fbConnectedAt >= 15000 && Object.keys(_obLoad()).length > 0) _obFlushAll();
+  }, 8000);
   window._obHas = _obHas;
 
   // ── แถบแจ้งสถานะซิงค์ข้อมูล/ออฟไลน์ (ไม่มีมาก่อน) ──────────────────────────────
@@ -669,296 +630,9 @@
 
   // ดึงข้อมูลล่าสุดจาก Firebase ทันที (สำหรับปุ่มรีเฟรชของผู้ดูแล)
   window.fbForceRefresh = function(cb) {
-    get(ref(db, 'employees')).then(snapshot => {
-      const data = normalizeEmployees(snapshot.val());
-      if (data && data.length > 0) {
-        employees = data;
-        _skeCacheSet('ske_emp', employees);
-      }
-      return get(ref(db, 'vehicles'));
-    }).then(snapshot => {
-      const vdata = normalizeList(snapshot.val());
-      if (vdata) {
-        vehicles = vdata;
-        localStorage.setItem('ske_vehicles', JSON.stringify(vehicles));
-      }
-      if (typeof cb === 'function') cb(window._fbConnected === true);
-    }).catch(e => {
-      console.error('fbForceRefresh error', e);
-      if (typeof cb === 'function') cb(false);
-    });
-  };
-
-  // ฟัง realtime — เมื่อข้อมูลเปลี่ยนจากเครื่องอื่นจะอัพเดทอัตโนมัติ
-  // หมายเหตุ: การ sync ครั้งแรกหลังเปิดแอพ (เทียบกับ cache เก่าใน localStorage ที่อาจค้างมาเป็นชม./วัน)
-  // ไม่นับเป็น "การเปลี่ยนสถานะสด" — กันไม่ให้เด้งแจ้งเตือน+เสียงรัวๆ ย้อนหลังทุกครั้งที่เปิดแอพใหม่
-  let _empSynced = false;
-  onValue(ref(db, 'employees'), (snapshot) => {
-    const data = normalizeEmployees(snapshot.val());
-    if (_obHasFresh('employees')) {
-      // ยังมีงานค้างส่งของเครื่องนี้อยู่ — ข้อมูลเซิร์ฟเวอร์ตอนนี้เก่ากว่าของเครื่อง อย่าเพิ่งเอามาทับ
-      // (setInterval ใน _obFlushAll จะพยายามส่งซ้ำเองจนสำเร็จ แล้วค่อยปล่อยให้ onValue รอบถัดไปทำงานตามปกติ)
-      _firstSync.employees = true; _empSynced = true; window._fbReady = true; return;
-    }
-    if (data && data.length > 0) {
-      // Firebase มีข้อมูลอยู่แล้ว → ใช้เป็นข้อมูลหลักเสมอ (ไม่เขียนทับด้วยข้อมูลเครื่อง)
-      const oldEmployees = employees;
-      employees = data;
-      _skeCacheSet('ske_emp', employees);
-      if (_empSynced && typeof notifyNewlyAvailable === 'function') notifyNewlyAvailable(oldEmployees, employees);
-      _empSynced = true;
-      if (currentUser) {
-        const fresh = employees.find(e => e.id === currentUser.id);
-        if (fresh) { currentUser = {...currentUser, ...fresh}; saveU(); }
-      }
-      const dash = document.getElementById('dashboard');
-      const admin = document.getElementById('admin');
-      if (dash && !dash.classList.contains('hidden')) renderDashboard();
-      if (admin && !admin.classList.contains('hidden')) renderAdmin();
-    } else if (!_firstSync.employees && employees.length > 0) {
-      // Firebase ว่างจริงๆ (ครั้งแรกที่ใช้งาน) → อัพโหลดข้อมูลเครื่องขึ้นไปครั้งเดียว
-      set(ref(db, 'employees'), employees);
-    }
-    _firstSync.employees = true;
-    _empSynced = true;
-    window._fbReady = true;
-  });
-
-  // ฟัง realtime — รายการรถทั้งหมด (แยกจากพนักงานเด็ดขาด — เพิ่ม/ลบ/แก้รถได้เองโดยไม่ต้องผูกกับคนขับ)
-  let _vehSynced = false;
-  onValue(ref(db, 'vehicles'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (_obHasFresh('vehicles')) { _firstSync.vehicles = true; _vehSynced = true; return; }
-    if (data) {
-      vehicles = data;
-      localStorage.setItem('ske_vehicles', JSON.stringify(vehicles));
-      _vehSynced = true;
-      const summaryEl = document.getElementById('adminSummaryContent');
-      const admin = document.getElementById('admin');
-      if (summaryEl && admin && !admin.classList.contains('hidden') && typeof buildSummaryHTML === 'function') summaryEl.innerHTML = buildSummaryHTML();
-      const vp = document.getElementById('adminVehiclePanel');
-      if (vp && !vp.classList.contains('hidden') && typeof renderAdminVehicleList === 'function') renderAdminVehicleList();
-    } else if (!_firstSync.vehicles && vehicles.length > 0) {
-      // Firebase ว่างจริงๆ (ครั้งแรกที่ใช้งาน) → อัพโหลดข้อมูลเครื่องขึ้นไปครั้งเดียว
-      set(ref(db, 'vehicles'), vehicles);
-    }
-    _firstSync.vehicles = true;
-    _vehSynced = true;
-  });
-
-  onValue(ref(db, 'adminPwHash'), (snapshot) => {
-    const h = snapshot.val();
-    if (h) { adminPwHash = h; localStorage.setItem('ske_pwHash', h); }
-  });
-
-  onValue(ref(db, 'viewerPwHash'), (snapshot) => {
-    const h = snapshot.val();
-    if (h) { viewerPwHash = h; localStorage.setItem('ske_viewerPwHash', h); }
-  });
-
-  onValue(ref(db, 'adminPin2Hash'), (snapshot) => {
-    const h = snapshot.val();
-    if (h) { adminPin2Hash = h; localStorage.setItem('ske_pin2Hash', h); }
-  });
-
-  onValue(ref(db, 'emergencyCodeHash'), (snapshot) => {
-    const h = snapshot.val();
-    if (h) { emergencyCodeHash = h; localStorage.setItem('ske_emergHash', h); }
-  });
-
-  // ฟัง realtime — รายการแจ้งซ่อม
-  onValue(ref(db, 'repairs'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (_obHasFresh('repairs')) { _firstSync.repairs = true; return; }
-    if (data) {
-      repairs = data;
-      _skeCacheSet('ske_repairs', repairs);
-      if (typeof updateMaintBadges === 'function') updateMaintBadges();
-      const m = document.getElementById('repairModal');
-      if (m && !m.classList.contains('hidden') && typeof renderRepairList === 'function') renderRepairList();
-      const am = document.getElementById('adminMaintPanel');
-      if (am && !am.classList.contains('hidden') && typeof renderAdminMaint === 'function') renderAdminMaint();
-      if (typeof updateAdminMaintBadge === 'function') updateAdminMaintBadge();
-    } else if (!_firstSync.repairs && repairs.length > 0) {
-      set(ref(db, 'repairs'), repairs);
-    }
-    if (!_firstSync.repairs) {
-      // sync ครั้งแรก → ลบรูปเก่าเกิน 12 เดือนออกจาก repairs แล้วอัพเดท Firebase
-      setTimeout(() => { if (typeof purgeOldPhotos === 'function') purgeOldPhotos(); }, 2000);
-    }
-    _firstSync.repairs = true;
-  });
-
-  // ฟัง realtime — รายการเปลี่ยนถ่ายของเหลว
-  onValue(ref(db, 'fluidLogs'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (_obHasFresh('fluidLogs')) { _firstSync.fluidLogs = true; return; }
-    if (data) {
-      fluidLogs = data;
-      _skeCacheSet('ske_fluid', fluidLogs);
-      if (typeof updateMaintBadges === 'function') updateMaintBadges();
-      const m = document.getElementById('fluidModal');
-      if (m && !m.classList.contains('hidden') && typeof renderFluidList === 'function') renderFluidList();
-    } else if (!_firstSync.fluidLogs && fluidLogs.length > 0) {
-      set(ref(db, 'fluidLogs'), fluidLogs);
-    }
-    _firstSync.fluidLogs = true;
-  });
-
-  // ฟัง realtime — รายการเบิกเงินพนักงาน
-  onValue(ref(db, 'cashRequests'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (_obHasFresh('cashRequests')) { _firstSync.cashRequests = true; return; }
-    if (data) {
-      cashRequests = data;
-      localStorage.setItem('ske_cash', JSON.stringify(cashRequests));
-      if (typeof updateMaintBadges === 'function') updateMaintBadges();
-      if (typeof updateAdminCashBadge === 'function') updateAdminCashBadge();
-      const m = document.getElementById('cashModal');
-      if (m && !m.classList.contains('hidden') && typeof renderCashList === 'function') renderCashList();
-      const ap = document.getElementById('adminCashPanel');
-      if (ap && !ap.classList.contains('hidden') && typeof renderAdminCashList === 'function') renderAdminCashList();
-    } else if (!_firstSync.cashRequests && cashRequests.length > 0) {
-      set(ref(db, 'cashRequests'), cashRequests);
-    }
-    _firstSync.cashRequests = true;
-  });
-
-  // ฟัง realtime — ประวัติการลา
-  onValue(ref(db, 'leaveLogs'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (_obHasFresh('leaveLogs')) { _firstSync.leaveLogs = true; return; }
-    if (data) {
-      leaveLogs = data;
-      localStorage.setItem('ske_leaveLogs', JSON.stringify(leaveLogs));
-      const lp = document.getElementById('adminLeaveHistoryPanel');
-      if (lp && !lp.classList.contains('hidden') && typeof renderLeaveHistory === 'function') renderLeaveHistory();
-    } else if (!_firstSync.leaveLogs && leaveLogs.length > 0) {
-      set(ref(db, 'leaveLogs'), leaveLogs);
-    }
-    _firstSync.leaveLogs = true;
-  });
-
-  // ฟัง realtime — ประวัติเที่ยววิ่งงาน (บันทึกถาวร)
-  onValue(ref(db, 'runLogs'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      runLogs = data;
-      localStorage.setItem('ske_runlogs', JSON.stringify(runLogs));
-      const rm = document.getElementById('employeeRunLogModal');
-      if (rm && typeof openEmployeeRunLogModal === 'function') openEmployeeRunLogModal();
-      const dash = document.getElementById('dashboard');
-      if (dash && !dash.classList.contains('hidden') && currentUser && typeof renderDashboard === 'function') renderDashboard();
-    } else if (!_firstSync.runLogs && runLogs.length > 0) {
-      set(ref(db, 'runLogs'), runLogs);
-    }
-    if (!_firstSync.runLogs) {
-      // sync ครั้งแรก → กู้เที่ยวที่ตกหล่นก่อนอัพเดทระบบนี้ (รอให้ employees โหลดเสร็จก่อน)
-      setTimeout(() => { if (typeof backfillMissedRunLogs === 'function') backfillMissedRunLogs(); }, 2500);
-    }
-    _firstSync.runLogs = true;
-  });
-
-  // ── เฝ้าระวังสถานะการเชื่อมต่อ — ดึงข้อมูลล่าสุดทันทีทุกครั้งที่กลับมาออนไลน์ ──
-  // ทำให้แอพ real-time ต่อเนื่อง แม้เน็ตหลุด/สลับ WiFi-มือถือ/เครื่องพักการเชื่อมต่อ
-  let _wasConnected = false;
-  window._fbConnected = false;
-  onValue(ref(db, '.info/connected'), (snap) => {
-    const connected = snap.val() === true;
-    window._fbConnected = connected;
-    if (connected && !_wasConnected) {
-      _obFlushAll();
-      // เพิ่งกลับมาเชื่อมต่อได้ → sync ข้อมูลทุกชุดทันที (onValue จะ replay ให้เองอยู่แล้ว แต่ get ย้ำให้ชัวร์+เร็ว)
-      get(ref(db, 'employees')).then(s => {
-        const d = normalizeList(s.val());
-        if (d && d.length > 0) {
-          employees = d;
-          _skeCacheSet('ske_emp', employees);
-          if (currentUser) { const f = employees.find(e => e.id === currentUser.id); if (f) { currentUser = {...currentUser, ...f}; saveU(); } }
-          const dash = document.getElementById('dashboard');
-          const admin = document.getElementById('admin');
-          if (dash && !dash.classList.contains('hidden') && typeof renderDashboard === 'function') renderDashboard();
-          if (admin && !admin.classList.contains('hidden') && typeof renderAdmin === 'function') renderAdmin();
-        }
-      }).catch(() => {});
-    }
-    _wasConnected = connected;
-    if (typeof window._setOnlineDot === 'function') window._setOnlineDot(connected);
-  });
-
-  get(ref(db, 'employees')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data && data.length > 0) {
-      // Firebase มีข้อมูลอยู่แล้ว → ใช้เป็นข้อมูลหลักเสมอ
-      employees = data;
-      _skeCacheSet('ske_emp', employees);
-    } else if (!_firstSync.employees) {
-      // Firebase ว่างจริงๆ → อัพโหลดข้อมูลที่มีอยู่ในเครื่อง (default หรือ localStorage)
-      window.fbSaveEmployees(employees);
-    }
-    _firstSync.employees = true;
-    window._fbReady = true;
-  }).catch(e => { window._fbReady = true; console.error('fbGet error', e); });
-
-  get(ref(db, 'adminPwHash')).then(async snapshot => {
-    const h = snapshot.val();
-    if (h) { adminPwHash = h; localStorage.setItem('ske_pwHash', h); }
-    else { if(!adminPwHash) adminPwHash = await sha256Hex(SKE_DEFAULT_ADMIN_PW); window.fbSaveAdminPwHash(adminPwHash); }
-  });
-
-  get(ref(db, 'viewerPwHash')).then(async snapshot => {
-    const h = snapshot.val();
-    if (h) { viewerPwHash = h; localStorage.setItem('ske_viewerPwHash', h); }
-    else { if(!viewerPwHash) viewerPwHash = await sha256Hex(SKE_DEFAULT_VIEWER_PW); window.fbSaveViewerPwHash(viewerPwHash); }
-  });
-
-  get(ref(db, 'adminPin2Hash')).then(async snapshot => {
-    const h = snapshot.val();
-    if (h) { adminPin2Hash = h; localStorage.setItem('ske_pin2Hash', h); }
-    else { if(!adminPin2Hash) adminPin2Hash = await sha256Hex(SKE_DEFAULT_PIN2); window.fbSaveAdminPin2Hash(adminPin2Hash); }
-  });
-
-  get(ref(db, 'emergencyCodeHash')).then(async snapshot => {
-    const h = snapshot.val();
-    if (h) { emergencyCodeHash = h; localStorage.setItem('ske_emergHash', h); }
-    else { if(!emergencyCodeHash) emergencyCodeHash = await sha256Hex(SKE_DEFAULT_EMERGENCY_CODE); window.fbSaveEmergencyCodeHash(emergencyCodeHash); }
-  });
-
-  get(ref(db, 'repairs')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      repairs = data;
-      _skeCacheSet('ske_repairs', repairs);
-      if (typeof updateMaintBadges === 'function') updateMaintBadges();
-    } else if (!_firstSync.repairs && repairs.length > 0) {
-      window.fbSaveRepairs(repairs);
-    }
-    _firstSync.repairs = true;
-  }).catch(e => console.error('fbGet repairs error', e));
-
-  get(ref(db, 'fluidLogs')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      fluidLogs = data;
-      _skeCacheSet('ske_fluid', fluidLogs);
-      if (typeof updateMaintBadges === 'function') updateMaintBadges();
-    } else if (!_firstSync.fluidLogs && fluidLogs.length > 0) {
-      window.fbSaveFluidLogs(fluidLogs);
-    }
-    _firstSync.fluidLogs = true;
-  }).catch(e => console.error('fbGet fluidLogs error', e));
-
-  get(ref(db, 'cashRequests')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      cashRequests = data;
-      localStorage.setItem('ske_cash', JSON.stringify(cashRequests));
-      if (typeof updateMaintBadges === 'function') updateMaintBadges();
-    } else if (!_firstSync.cashRequests && cashRequests.length > 0) {
-      window.fbSaveCashRequests(cashRequests);
-    }
-    _firstSync.cashRequests = true;
-  }).catch(e => console.error('fbGet cashRequests error', e));
+    // V8: ตัด startup get() ที่ซ้ำกับ realtime onValue() ออกทั้งหมด
+  // ลด burst read ตอนเปิดแอปและตอน connection กลับมา
+  window._fbReady = true;
 
 
   // ══ Monthly document submissions — realtime Firebase sync ══
@@ -1026,13 +700,8 @@
       if (dash && !dash.classList.contains('hidden') && typeof renderDashboard === 'function') renderDashboard();
       if (admin && !admin.classList.contains('hidden') && typeof renderAdmin === 'function') renderAdmin();
     } else if (!_firstSync.monthlyDocs) {
-      // อัปโหลด cache เครื่องขึ้น Firebase เฉพาะครั้งแรกเท่านั้น เพื่อไม่ให้ข้อมูลเก่าในเครื่องฟื้นกลับมาทับข้อมูลที่ลบ/อัปเดตแล้ว
-      const cache = (()=>{try{return JSON.parse(localStorage.getItem('ske_monthly_docs')||'[]');}catch(e){return [];}})();
-      if (Array.isArray(cache) && cache.length) set(ref(db, 'monthlyDocs'), cache).catch(e=>console.error('fb seed monthlyDocs error', e));
-      else {
-        monthlyDocs = [];
-        localStorage.setItem('ske_monthly_docs', '[]');
-      }
+      monthlyDocs = [];
+      localStorage.setItem('ske_monthly_docs', '[]');
     } else {
       monthlyDocs = [];
       localStorage.setItem('ske_monthly_docs', '[]');
@@ -1043,127 +712,6 @@
     }
     _firstSync.monthlyDocs = true;
   });
-  get(ref(db, 'monthlyDocs')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      monthlyDocs = data;
-      _skeCacheSet('ske_monthly_docs', data);
-    }
-    _firstSync.monthlyDocs = true;
-  }).catch(e => { _firstSync.monthlyDocs = true; console.error('fbGet monthlyDocs error', e); });
-
-  // ══ แผนงาน (จ่ายงาน) — jobPlan ══
-  window.fbSaveJobPlan = function(list) {
-    const clean = Array.isArray(list) ? list.filter(x => x && typeof x === 'object') : [];
-    _obMark('jobPlan', clean);
-    return _withTimeout(set(ref(db, 'jobPlan'), clean), SKE_WRITE_TIMEOUT_MS, 'timeout:jobPlan')
-      .then(() => { _obClear('jobPlan'); })
-      .catch(e => { console.error('fbSaveJobPlan error', e); throw e; });
-  };
-  // ดึงข้อมูลแผนงานสดจากเซิร์ฟเวอร์ตรงๆ (ไม่ใช้ cache) — ใช้ก่อนบันทึกทุกครั้ง กันแอดมินหลายคนแก้พร้อมกันแล้วเขียนทับกัน
-  window.fbGetJobPlanFresh = function() {
-    return get(ref(db, 'jobPlan')).then(s => normalizeList(s.val()) || []).catch(() => null);
-  };
-  onValue(ref(db, 'jobPlan'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      jobPlanRows = data;
-      _skeCacheSet('ske_jobplan', data);
-      const admin = document.getElementById('admin');
-      if (admin && !admin.classList.contains('hidden') && typeof renderJobPlan === 'function') renderJobPlan();
-    } else if (!_firstSync.jobPlan) {
-      const cache = (()=>{try{return JSON.parse(localStorage.getItem('ske_jobplan')||'[]');}catch(e){return [];}})();
-      if (Array.isArray(cache) && cache.length) set(ref(db, 'jobPlan'), cache).catch(e=>console.error('fb seed jobPlan error', e));
-      else {
-        jobPlanRows = [];
-        localStorage.setItem('ske_jobplan', '[]');
-      }
-    } else {
-      jobPlanRows = [];
-      localStorage.setItem('ske_jobplan', '[]');
-      const admin = document.getElementById('admin');
-      if (admin && !admin.classList.contains('hidden') && typeof renderJobPlan === 'function') renderJobPlan();
-    }
-    _firstSync.jobPlan = true;
-  });
-  get(ref(db, 'jobPlan')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      jobPlanRows = data;
-      _skeCacheSet('ske_jobplan', data);
-    }
-    _firstSync.jobPlan = true;
-  }).catch(e => { _firstSync.jobPlan = true; console.error('fbGet jobPlan error', e); });
-
-  // ══ เส้นทางหลักประจำสัปดาห์ (route templates) ══
-  window.fbSaveJobRouteTemplates = function(list) {
-    const clean = Array.isArray(list) ? list.filter(x => x && typeof x === 'object') : [];
-    _obMark('jobRouteTemplates', clean);
-    return _withTimeout(set(ref(db, 'jobRouteTemplates'), clean), SKE_WRITE_TIMEOUT_MS, 'timeout:jobRouteTemplates')
-      .then(() => { _obClear('jobRouteTemplates'); })
-      .catch(e => { console.error('fbSaveJobRouteTemplates error', e); throw e; });
-  };
-  onValue(ref(db, 'jobRouteTemplates'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      jobRouteTemplates = data;
-      _skeCacheSet('ske_jobtemplates', data);
-      const admin = document.getElementById('admin');
-      if (admin && !admin.classList.contains('hidden') && typeof renderJobRouteTemplates === 'function') renderJobRouteTemplates();
-    } else if (!_firstSync.jobRouteTemplates) {
-      const cache = (()=>{try{return JSON.parse(localStorage.getItem('ske_jobtemplates')||'[]');}catch(e){return [];}})();
-      if (Array.isArray(cache) && cache.length) set(ref(db, 'jobRouteTemplates'), cache).catch(e=>console.error('fb seed jobRouteTemplates error', e));
-      else {
-        jobRouteTemplates = [];
-        localStorage.setItem('ske_jobtemplates', '[]');
-      }
-    } else {
-      jobRouteTemplates = [];
-      localStorage.setItem('ske_jobtemplates', '[]');
-      const admin = document.getElementById('admin');
-      if (admin && !admin.classList.contains('hidden') && typeof renderJobRouteTemplates === 'function') renderJobRouteTemplates();
-    }
-    _firstSync.jobRouteTemplates = true;
-  });
-  get(ref(db, 'jobRouteTemplates')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      jobRouteTemplates = data;
-      _skeCacheSet('ske_jobtemplates', data);
-    }
-    _firstSync.jobRouteTemplates = true;
-  }).catch(e => { _firstSync.jobRouteTemplates = true; console.error('fbGet jobRouteTemplates error', e); });
-
-  // ══ ความคิดเห็น/ข้อเสนอแนะพนักงาน (feedbacks) ══
-  window.fbSaveFeedbacks = function(list) {
-    const clean = Array.isArray(list) ? list.filter(x => x && typeof x === 'object') : [];
-    _obMark('feedbacks', clean);
-    return _withTimeout(set(ref(db, 'feedbacks'), clean), SKE_WRITE_TIMEOUT_MS, 'timeout:feedbacks')
-      .then(() => { _obClear('feedbacks'); })
-      .catch(e => { console.error('fbSaveFeedbacks error', e); throw e; });
-  };
-  onValue(ref(db, 'feedbacks'), (snapshot) => {
-    const data = normalizeList(snapshot.val());
-    if (data) {
-      companyFeedbacks = data;
-      _skeCacheSet('ske_feedbacks', data);
-      const admin = document.getElementById('admin');
-      if (admin && !admin.classList.contains('hidden') && typeof renderFeedbackList === 'function') renderFeedbackList();
-    } else if (!_firstSync.feedbacks) {
-      const cache = (()=>{try{return JSON.parse(localStorage.getItem('ske_feedbacks')||'[]');}catch(e){return [];}})();
-      if (Array.isArray(cache) && cache.length) set(ref(db, 'feedbacks'), cache).catch(e=>console.error('fb seed feedbacks error', e));
-      else {
-        companyFeedbacks = [];
-        localStorage.setItem('ske_feedbacks', '[]');
-      }
-    } else {
-      companyFeedbacks = [];
-      localStorage.setItem('ske_feedbacks', '[]');
-      const admin = document.getElementById('admin');
-      if (admin && !admin.classList.contains('hidden') && typeof renderFeedbackList === 'function') renderFeedbackList();
-    }
-    _firstSync.feedbacks = true;
-  });
   get(ref(db, 'feedbacks')).then(snapshot => {
     const data = normalizeList(snapshot.val());
     if (data) {
@@ -1172,7 +720,6 @@
     }
     _firstSync.feedbacks = true;
   }).catch(e => { _firstSync.feedbacks = true; console.error('fbGet feedbacks error', e); });
-
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -1857,7 +1404,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.25-connection-v7-sdk-reconnect-fix</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.25-connection-v8-listener-load-fix</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -1865,7 +1412,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">สถานะรถ SKE</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">SK EVO LOGISTICS · v2026.07.25-connection-v7-sdk-reconnect-fix</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">SK EVO LOGISTICS · v2026.07.25-connection-v8-listener-load-fix</div>
       </div>
     </div>
 
@@ -1983,7 +1530,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.25-connection-v7-sdk-reconnect-fix</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.25-connection-v8-listener-load-fix</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -2239,7 +1786,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.25-connection-v7-sdk-reconnect-fix</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.25-connection-v8-listener-load-fix</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -2867,7 +2414,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.25-connection-v7-sdk-reconnect-fix';
+const SKE_APP_VERSION='v2026.07.25-connection-v8-listener-load-fix';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -3285,12 +2832,48 @@ function doInstall(){
 // หมายเหตุ: Service Worker ทำงานได้เฉพาะบน HTTPS จริง (หรือ localhost) เท่านั้น
 // ตอนเปิดไฟล์ในพรีวิว/แบบ file:// จะข้ามการลงทะเบียนไปเงียบๆ ไม่ขึ้น error (ไม่กระทบการใช้งานอื่น)
 let _swReg = null;
-if ('serviceWorker' in navigator &&
-    (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+// ลงทะเบียน Service Worker ผ่านจุดเดียว ป้องกันการ register ซ้ำระหว่าง PWA และ FCM
+window.skeEnsureServiceWorker = window.skeEnsureServiceWorker || (() => {
+  let swPromise = null;
+  return function skeEnsureServiceWorker() {
+    if (!('serviceWorker' in navigator) ||
+        !(location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      return Promise.reject(new Error('Service Worker ใช้ได้เฉพาะ HTTPS/localhost'));
+    }
+    if (!swPromise) {
+      swPromise = navigator.serviceWorker.register('sw.js', { scope: './' }).then(async reg => {
+        try { await reg.update(); } catch (_) {}
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        reg.addEventListener('updatefound', () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+              worker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+        return reg;
+      }).catch(err => {
+        swPromise = null;
+        throw err;
+      });
+    }
+    return swPromise;
+  };
+})();
+
+if ('serviceWorker' in navigator) {
+  let reloadingForNewSW = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloadingForNewSW) return;
+    reloadingForNewSW = true;
+    location.reload();
+  });
   window.addEventListener('load', () => {
-    window.getSkeServiceWorkerRegistration().then(reg => {
+    window.skeEnsureServiceWorker().then(reg => {
       _swReg = reg;
-    }).catch(e => console.info('SW ยังไม่พร้อม (จะใช้งานได้เมื่ออัปขึ้นโฮสต์จริงพร้อมไฟล์ sw.js):', e.message));
+    }).catch(e => console.info('SW ยังไม่พร้อม:', e.message));
   });
 }
 const _SKE_ICON='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%231E90D6"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E';
@@ -3316,7 +2899,7 @@ function showSystemNotification(title, options){
 (async function(){
   try{if('wakeLock' in navigator){let wl=await navigator.wakeLock.request('screen');document.addEventListener('visibilitychange',async()=>{try{if(document.visibilityState==='visible')wl=await navigator.wakeLock.request('screen');}catch(e){}});}}catch(e){}
 })();
-// V6: ไม่ดัก beforeunload เพื่อให้ recovery reload และการอัปเดต Service Worker ทำงานได้
+window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 
 
 // ── Premium video intro controller ───────────────────────────────────────────
@@ -3392,8 +2975,7 @@ document.addEventListener('visibilitychange',()=>{
       if(window._skeDebugLog)window._skeDebugLog('Resume','เครื่องยัง offline — รอ event online');
       return;
     }
-    if(window._skeDebugLog)window._skeDebugLog('Resume','กลับเข้าแอป — รอ Firebase SDK reconnect');
-    setTimeout(()=>{ if(window._fbConnected===false && window.forceReconnectNow) window.forceReconnectNow('resume'); },3000);
+    if(window._skeDebugLog)window._skeDebugLog('Resume','กลับเข้าแอป — ปล่อย Firebase SDK reconnect เอง');
     const dash=document.getElementById('dashboard');
     const admin=document.getElementById('admin');
     setTimeout(()=>{

@@ -246,7 +246,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.25-connection-v7-sdk-reconnect-fix';
+const SKE_APP_VERSION='v2026.07.25-connection-v8-listener-load-fix';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -807,8 +807,7 @@ document.addEventListener('visibilitychange',()=>{
       if(window._skeDebugLog)window._skeDebugLog('Resume','เครื่องยัง offline — รอ event online');
       return;
     }
-    if(window._skeDebugLog)window._skeDebugLog('Resume','กลับเข้าแอป — soft refresh โดยไม่ตัด connection');
-    if(window.forceReconnectNow) window.forceReconnectNow('resume');
+    if(window._skeDebugLog)window._skeDebugLog('Resume','กลับเข้าแอป — ปล่อย Firebase SDK reconnect เอง');
     const dash=document.getElementById('dashboard');
     const admin=document.getElementById('admin');
     setTimeout(()=>{
