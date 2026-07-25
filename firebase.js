@@ -1,6 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, onValue, get, update, remove, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, get, update, remove, forceLongPolling } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-messaging.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD9Tbm14DG31MYL9eB_0gYBY_tB9GiAyWw",
@@ -13,75 +13,45 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   };
 
   const app = initializeApp(firebaseConfig);
+
+  // Android PWA บางเครื่องมีอาการ WebSocket ค้างหลังสลับ Wi‑Fi/4G หรือกลับจาก background
+  // จึงบังคับ RTDB ใช้ long-polling ซึ่งสร้างคำขอใหม่ได้ง่ายกว่าเมื่อเส้นทางเครือข่ายเปลี่ยน
+  // ต้องเรียกก่อน getDatabase() เท่านั้น
+  forceLongPolling();
   const db = getDatabase(app);
 
-  // ── ตัวควบคุมการเชื่อมต่อ V5.1 DEV ─────────────────────────────────────
-  // หลักการ:
-  // 1) ปล่อยให้ Firebase SDK reconnect เองก่อน
-  // 2) เมื่อกลับจาก background / network เปลี่ยน และยัง disconnected ต่อเนื่อง
-  //    จึงค่อย reset socket แบบควบคุมเพียงครั้งเดียว
-  // 3) ไม่ล้าง Cache / localStorage ทุกครั้ง เพราะจะทำให้ session และคิว offline หาย
+  // ── ตัวควบคุมการเชื่อมต่อ V5.2 DEV ─────────────────────────────────────
+  // แก้จาก V5.1:
+  // - ใช้ Firebase SDK 12.16.0 (มีแพตช์ reconnect ที่ไม่มีใน 10.12.0)
+  // - ไม่เรียก goOffline()/goOnline() เองอีก เพราะเป็นการตัด connection โดยเจตนา
+  // - ใช้ soft refresh และ reload หน้าเพียงครั้งเดียวเมื่อ SDK ค้างนานจริง
   let _reconnecting = false;
-  let _lastHardReconnectAt = 0;
   let _recoveryTimer = null;
   let _disconnectSince = 0;
-  let _hardAttemptsInWindow = 0;
-  let _attemptWindowStartedAt = 0;
-
-  const HARD_RECONNECT_COOLDOWN_MS = 12000;
-  const DISCONNECTED_GRACE_MS = 3500;
-  const MAX_HARD_ATTEMPTS_PER_WINDOW = 2;
-  const ATTEMPT_WINDOW_MS = 60000;
+  const DISCONNECTED_GRACE_MS = 5000;
+  const STUCK_RELOAD_MS = 30000;
+  const RELOAD_GUARD_MS = 120000;
+  const RELOAD_GUARD_KEY = 'ske_v52_last_recovery_reload';
 
   function _finishReconnect(result) {
+    if (!_reconnecting) return;
     _reconnecting = false;
     if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'ผลลัพธ์: ' + result);
     if (typeof window._setReconnecting === 'function') window._setReconnecting(false);
   }
 
-  function _canHardReconnect() {
-    const now = Date.now();
-    if (!navigator.onLine) return false;
-    if (now - _lastHardReconnectAt < HARD_RECONNECT_COOLDOWN_MS) return false;
-    if (!(_attemptWindowStartedAt) || now - _attemptWindowStartedAt > ATTEMPT_WINDOW_MS) {
-      _attemptWindowStartedAt = now;
-      _hardAttemptsInWindow = 0;
-    }
-    return _hardAttemptsInWindow < MAX_HARD_ATTEMPTS_PER_WINDOW;
-  }
-
-  function _hardReconnect(source, done) {
-    if (!_canHardReconnect()) {
-      done('งด hard reconnect ชั่วคราวเพื่อไม่ให้ตัดต่อรัว');
-      return;
-    }
-    _lastHardReconnectAt = Date.now();
-    _hardAttemptsInWindow++;
+  function _reloadIfStuck(source) {
+    if (!navigator.onLine || document.visibilityState !== 'visible' || window._fbConnected === true) return false;
+    const disconnectedFor = _disconnectSince ? Date.now() - _disconnectSince : 0;
+    if (disconnectedFor < STUCK_RELOAD_MS) return false;
+    const lastReload = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0);
+    if (Date.now() - lastReload < RELOAD_GUARD_MS) return false;
+    sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now()));
     if (typeof window._skeDebugLog === 'function') {
-      window._skeDebugLog('Reconnect', 'reset socket จาก ' + source + ' ครั้งที่ ' + _hardAttemptsInWindow);
+      window._skeDebugLog('Reconnect', 'SDK ค้างเกิน 30 วินาที — reload connection จาก ' + source);
     }
-    try {
-      goOffline(db);
-      setTimeout(() => {
-        goOnline(db);
-        let checks = 0;
-        const timer = setInterval(() => {
-          checks++;
-          if (window._fbConnected === true) {
-            clearInterval(timer);
-            _hardAttemptsInWindow = 0;
-            if (window.fbForceRefresh) window.fbForceRefresh(() => done('hard reconnect สำเร็จ'));
-            else done('hard reconnect สำเร็จ');
-          } else if (checks >= 12) {
-            clearInterval(timer);
-            done('SDK ยังเชื่อมไม่ได้หลัง reset socket');
-          }
-        }, 1000);
-      }, 800);
-    } catch (e) {
-      console.error('hardReconnect error', e);
-      done('exception: ' + (e.message || e));
-    }
+    location.reload();
+    return true;
   }
 
   window.forceReconnectNow = function(source = 'manual') {
@@ -93,19 +63,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
     _reconnecting = true;
     if (typeof window._setReconnecting === 'function') window._setReconnecting(true);
-    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'เริ่ม recovery จาก ' + source);
+    if (typeof window._skeDebugLog === 'function') window._skeDebugLog('Reconnect', 'เริ่ม soft recovery จาก ' + source);
 
-    const safetyTimer = setTimeout(() => _finishReconnect('timeout หลัง 18 วินาที'), 18000);
-    const finish = msg => { clearTimeout(safetyTimer); _finishReconnect(msg); };
+    let finished = false;
+    const finish = msg => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(safetyTimer);
+      _finishReconnect(msg);
+    };
+    const safetyTimer = setTimeout(() => {
+      if (!_reloadIfStuck(source)) finish('ยังไม่ต่อ — รอ SDK reconnect ต่อ');
+    }, 10000);
 
-    // ลองอ่านข้อมูลแบบ soft ก่อน เผื่อ .info/connected ยังไม่อัปเดตทัน
     if (window.fbForceRefresh) {
       window.fbForceRefresh(ok => {
-        if (ok && window._fbConnected === true) finish('soft refresh สำเร็จ');
-        else _hardReconnect(source, finish);
+        if (ok || window._fbConnected === true) finish('soft refresh สำเร็จ');
+        else if (!_reloadIfStuck(source)) finish('soft refresh ไม่สำเร็จ — รอ SDK');
       });
     } else {
-      _hardReconnect(source, finish);
+      finish('ยังไม่มีฟังก์ชัน refresh — รอ SDK');
     }
   };
 
@@ -374,7 +351,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[SKE TRUCK] app version: v2026.07.24-connection-v3.1-rollback');
+  console.log('[SKE TRUCK] app version: v2026.07.25-connection-v5.2-dev');
   const SKE_OUTBOX_KEY = 'ske_outbox_v1';
   // งานค้างมีอายุจำกัด — เกินนี้ให้ "ทิ้ง" แทนที่จะส่งซ้ำ เพราะ payload เป็นข้อมูลทั้งชุด ณ เวลานั้น
   // ถ้าปล่อยให้คิวเก่าหลายนาที/ชั่วโมงส่งสำเร็จทีหลัง มันจะเอาข้อมูล "ทั้งก้อนเวอร์ชันเก่า" ทับขึ้นเซิร์ฟเวอร์
@@ -869,7 +846,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
     if (connected) {
       _disconnectSince = 0;
       clearTimeout(_recoveryTimer);
-      _hardAttemptsInWindow = 0;
     } else {
       if (!_disconnectSince) _disconnectSince = Date.now();
       if (navigator.onLine && typeof window._skeScheduleRecovery === 'function') {

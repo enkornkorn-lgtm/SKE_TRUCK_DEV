@@ -1,12 +1,11 @@
-SKE TRUCK CONNECTION V5.1 DEV
+SKE TRUCK CONNECTION V5.2 DEV
 
-ใช้กับ Repository SKE_TRUCK_DEV เท่านั้น
+สิ่งที่แก้จาก V5.1
+1. อัปเกรด Firebase JavaScript SDK จาก 10.12.0 เป็น 12.16.0
+2. บังคับ Realtime Database ใช้ long-polling แทน WebSocket เพื่อทดสอบอาการค้างหลังสลับ Wi-Fi/4G บน Android PWA
+3. ลบการสั่ง goOffline()/goOnline() ออกจาก recovery เพราะการสั่งนี้ตัด connection เอง
+4. soft refresh ก่อน และ reload หน้า 1 ครั้งเฉพาะเมื่อ .info/connected=false ต่อเนื่องเกิน 30 วินาที
+5. ไม่ล้าง Cache, localStorage, session/login หรือ outbox
+6. เปลี่ยน cache และ query version เป็น V5.2
 
-การแก้หลัก:
-- ไม่ล้าง cache/localStorage ทุกครั้งที่เปิดแอป
-- เพิ่ม recovery เมื่อกลับจาก background, browser online และ watchdog ตอนหน้าแอปมองเห็น
-- รอ Firebase SDK reconnect เองก่อน แล้วค่อย reset socket แบบมี cooldown
-- จำกัด hard reconnect ไม่เกิน 2 ครั้งต่อนาที ป้องกันการตัดต่อรัว
-- Service Worker bump cache เป็น V5.1
-
-อัปไฟล์ทั้งหมดทับ DEV แล้วรอ Deploy จากนั้นล้าง Site Data ของ DEV หนึ่งครั้งเท่านั้น
+ทดสอบใน DEV เท่านั้นก่อน ห้ามลง Production จนกว่าจะผ่านการสลับเครือข่ายและพักแอป
