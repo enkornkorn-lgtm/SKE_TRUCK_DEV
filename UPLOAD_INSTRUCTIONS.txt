@@ -1,0 +1,6 @@
+อัปไฟล์ทั้งหมดใน ZIP นี้ทับที่ root ของ SKE_TRUCK_DEV
+ไม่ต้องอัปตัว ZIP ขึ้น GitHub
+เวอร์ชันที่ต้องเห็น: v2026.07.25-connection-v8.1-listener-load-fix
+Service Worker URL: sw.js?v=8.1-20260725
+Cache: ske-truck-v8-1-20260725
+หลัง GitHub Pages deploy เสร็จ ให้ปิด PWA จาก Recent Apps แล้วเปิดใหม่หนึ่งครั้ง
