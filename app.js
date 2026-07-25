@@ -246,7 +246,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.25-connection-v8.2-connected-listener-fix';
+const SKE_APP_VERSION='v2026.07.25-connection-v8.3-startup-screen-fix';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -743,8 +743,8 @@ window.SKEIntro={
     splash.classList.remove('hidden');
     setTimeout(()=>{
       splash.classList.add('ske-intro-fadeout');
-      setTimeout(()=>{ splash.classList.add('hidden'); splash.classList.remove('ske-intro-fadeout'); if(typeof done==='function')done(); },520);
-    },800);
+      setTimeout(()=>{ splash.classList.add('hidden'); splash.classList.remove('ske-intro-fadeout'); if(typeof done==='function')done(); },180);
+    },250);
   }
 };
 
@@ -762,7 +762,7 @@ function skeInitApp(){
   // (เดิมหน่วง 1.8 วิเปล่าๆ ก่อนเริ่มเช็คด้วยซ้ำ ทำให้เปิดแอพช้าเสมอแม้ Firebase จะพร้อมแล้วก็ตาม)
   const startTime=Date.now();
   function tryStart(){
-    if(window._fbReady||Date.now()-startTime>3000){
+    if(window._fbReady||Date.now()-startTime>700){
       pruneOldMaintenance();
       migrateLegacyLeaveStatus();
       const savedAdmin=localStorage.getItem('ske_admin')==='1';

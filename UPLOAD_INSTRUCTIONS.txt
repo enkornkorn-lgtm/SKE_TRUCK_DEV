@@ -1,11 +1,12 @@
-อัปเฉพาะไฟล์เหล่านี้ทับที่ root ของ SKE_TRUCK_DEV:
+V8.3 แก้เฉพาะหน้าดำ/ความเร็วตอนเปิดแอป ไม่เปลี่ยน Firebase reconnect ของ V8.2
+
+อัปไฟล์เหล่านี้ทับที่ root ของ SKE_TRUCK_DEV:
 - index.html
-- firebase.js
 - app.js
+- firebase.js
 - sw.js
 - manifest.json
 
-ไม่ต้องอัปตัว ZIP และไม่ต้องอัปไฟล์รายงาน
-เวอร์ชันที่ต้องเห็น: v2026.07.25-connection-v8.2-connected-listener-fix
-หลัง GitHub Pages deploy เสร็จ ให้ปิด PWA จาก Recent Apps แล้วเปิดใหม่หนึ่งครั้ง
-ทดสอบโหมดเครื่องบิน: แถบแดงควรขึ้นทันทีหรือภายในไม่กี่วินาที เพราะ navigator.onLine=false
+ไม่ต้องอัปไฟล์ ZIP หรือไฟล์ TXT
+เวอร์ชันที่ต้องเห็น: v2026.07.25-connection-v8.3-startup-screen-fix
+หลัง Deploy: ปิด PWA จาก Recent Apps แล้วเปิดใหม่หนึ่งครั้ง

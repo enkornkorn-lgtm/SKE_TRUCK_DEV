@@ -1,0 +1,5 @@
+1. เปลี่ยนพื้นหลังเอกสารและ splash จากดำเป็นสีพื้นแอป
+2. ทำ splash เป็น fixed app shell สำหรับ first paint
+3. ลดเวลารอ Firebase ก่อน render จาก 3 วินาทีเหลือ 0.7 วินาที
+4. เพิ่ม overlay สั้นมากตอน pageshow เพื่อปิดบังเฟรมดำของ Android
+5. ไม่แก้ .info/connected, listener, queue หรือ reconnect ของ V8.2
