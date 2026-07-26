@@ -1,7 +1,19 @@
-// SKE TRUCK Unified Service Worker v3
-// ใช้ตัวเดียวสำหรับ PWA cache + Firebase Cloud Messaging
-const CACHE_NAME = 'ske-truck-dev-v31-reconnect-logo-v1';
-const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
+// SKE TRUCK DEV Service Worker — V3.1 Reconnect Logo V2 (safe cache)
+// เป้าหมาย: ห้าม Service Worker สะสม Firebase/API/Long Polling และห้าม cache ชนกับ Production
+
+const CACHE_NAME = 'ske-truck-dev-ske-truck-dev-v31-reconnect-logo-v2';
+const OLD_DEV_CACHES = new Set([
+  'ske-truck-dev-v31-reconnect-logo-v1',
+  'ske-truck-dev-handoff-v1'
+]);
+
+// เก็บเฉพาะไฟล์ static ที่รู้แน่ ๆ เท่านั้น
+const STATIC_ASSETS = [
+  './manifest.json?v=dev-v31-reconnect-logo-v2',
+  './icon-192.png',
+  './icon-512.png',
+  './ske-logo.png'
+];
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
@@ -15,13 +27,15 @@ firebase.initializeApp({
   messagingSenderId: "170552278274",
   appId: "1:170552278274:web:80f699b101cc1867c5161b"
 });
+
 const messaging = firebase.messaging();
 
 self.addEventListener('install', event => {
-  // ไฟล์ใดไม่มีอยู่จะไม่ทำให้ SW ติดตั้งล้มเหลวทั้งชุด
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.allSettled(STATIC_ASSETS.map(asset => cache.add(asset))))
+      .then(cache => Promise.allSettled(
+        STATIC_ASSETS.map(asset => cache.add(new Request(asset, { cache: 'reload' })))
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -29,51 +43,49 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(keys => Promise.all(
+        keys
+          // ลบเฉพาะ cache DEV รุ่นก่อน ห้ามลบ cache ของ Production/โปรเจกต์อื่นบน origin เดียวกัน
+          .filter(key => OLD_DEV_CACHES.has(key))
+          .map(key => caches.delete(key))
+      ))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', event => {
   const request = event.request;
+
+  // ไม่แตะคำขอที่ไม่ใช่ GET
   if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
 
-  // Firebase/API/HTML ต้องผ่าน network โดยตรง ไม่เก็บ response เก่า
-  if (url.hostname.includes('firebase') ||
-      url.hostname.includes('googleapis') ||
-      url.hostname.includes('gstatic') ||
-      request.mode === 'navigate' ||
-      request.destination === 'document') {
-    return;
-  }
+  // ห้าม Service Worker ดัก/แคชคำขอข้าม origin ทุกชนิด
+  // ครอบคลุม Firebase RTDB WebSocket fallback, long polling lp?start=..., FCM,
+  // gstatic, googleapis, firebaseio, firebasedatabase และ API ภายนอกทั้งหมด
+  if (url.origin !== self.location.origin) return;
 
-  // Cache เฉพาะไฟล์ static จริง
-  const allowed = ['script', 'style', 'image', 'font', 'manifest'];
-  if (!allowed.includes(request.destination)) return;
+  // หน้า HTML ต้อง network โดยตรง เพื่อรับเวอร์ชันล่าสุดเสมอ
+  if (request.mode === 'navigate' || request.destination === 'document') return;
+
+  // อนุญาตตอบจาก cache เฉพาะรายการที่ precache ไว้เท่านั้น
+  const staticUrls = new Set(STATIC_ASSETS.map(asset => new URL(asset, self.registration.scope).href));
+  if (!staticUrls.has(url.href)) return;
 
   event.respondWith(
-    caches.match(request).then(cached => {
-      const network = fetch(request).then(response => {
-        if (response && response.ok && response.type !== 'opaque') {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        }
-        return response;
-      });
-      return cached || network;
-    })
+    caches.open(CACHE_NAME).then(cache =>
+      cache.match(request, { ignoreSearch: false }).then(cached => cached || fetch(request))
+    )
   );
 });
 
 messaging.onBackgroundMessage(payload => {
-  // ถ้า FCM ส่ง notification payload เบราว์เซอร์อาจแสดงเองอยู่แล้ว
-  // โค้ดนี้รองรับ data-only และกำหนด fallback ที่สม่ำเสมอ
-  const n = payload.notification || {};
-  const title = n.title || 'SKE TRUCK';
+  const notification = payload.notification || {};
+  const title = notification.title || 'SKE TRUCK';
   const options = {
-    body: n.body || '',
-    icon: n.icon || './icon-192.png',
+    body: notification.body || '',
+    icon: notification.icon || './icon-192.png',
     badge: './icon-192.png',
     data: payload.data || {},
     tag: (payload.data && payload.data.tag) || 'ske-alert'

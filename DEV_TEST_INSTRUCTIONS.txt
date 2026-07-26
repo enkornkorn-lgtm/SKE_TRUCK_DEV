@@ -1,14 +1,18 @@
-DEV ONLY — V3.1 Reconnect + Logo Splash V1
+DEV ONLY — V3.1 Reconnect + Logo V2 (Safe Service Worker)
 
-แก้ 2 เรื่องเท่านั้น:
-1) สลับ Wi‑Fi/4G แล้ว RTDB socket ค้าง: รอ 7 วินาที, probe Firebase REST, จากนั้น reset socket 1 ครั้ง และมี cooldown 60 วินาที
-2) หน้าดำตอนเปิด: เปลี่ยนพื้นเริ่มต้นและ theme เป็นสีขาว พร้อมแสดง ske-logo.png
+แก้เพิ่มจาก V1 เฉพาะ Service Worker/cache:
+- ไม่ runtime-cache คำขอใด ๆ
+- Firebase, Long Polling lp?start=, gstatic, googleapis และ cross-origin ทั้งหมดผ่าน network ตรง
+- cache เฉพาะ manifest และรูป static 3 ไฟล์
+- cache name แยก DEV ไม่ชน Production ที่อยู่ origin เดียวกัน
+- activate ลบเฉพาะ cache DEV รุ่นก่อน ไม่ลบ cache ของ Production
 
-ทดสอบใน DEV ก่อนเท่านั้น:
-- เปิดแอปใหม่ ต้องเห็นโลโก้ทันที ไม่เห็นจอดำ
-- Wi‑Fi → 4G → Wi‑Fi หลายรอบ
-- Airplane mode 20 วินาทีแล้วปิด
-- Background 2–5 นาทีแล้วกลับเข้าแอป
-- หลัง reconnect ต้องอ่านและบันทึกข้อมูลได้จริง
+ก่อนทดสอบ:
+1) อัปทั้งชุดลง DEV
+2) ลบข้อมูลเว็บไซต์ของ enkornkorn-lgtm.github.io หนึ่งครั้ง เพื่อเอา cache เก่าที่สะสมออก
+3) เปิด DEV ใหม่ แล้วตรวจพื้นที่จัดเก็บหลังใช้งาน/สลับเครือข่ายหลายรอบ
 
-เวอร์ชัน: v2026.07.26-dev-v3.1-reconnect-logo-v1
+ทดสอบ Wi-Fi ↔ 4G, Airplane Mode, background/resume และการอ่าน/เขียนข้อมูลจริง
+ห้ามอัป Production จนกว่า DEV จะผ่าน
+
+เวอร์ชัน: v2026.07.26-dev-v3.1-reconnect-logo-v2-sw-safe
