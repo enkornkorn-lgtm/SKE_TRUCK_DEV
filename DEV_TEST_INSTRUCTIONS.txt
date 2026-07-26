@@ -1,0 +1,40 @@
+DEV ONLY — V3.2.2 Realtime Transport Fix
+
+สาเหตุที่ยืนยันจาก log V3.2.1:
+- navigator.onLine=true และ Firebase REST เข้าได้ แต่ .info/connected=false
+- เมื่อ WebSocket ล้มเหลว Firebase บันทึก firebase:previous_websocket_failure=true
+- SDK จึงเปลี่ยนไปใช้ HTTP long-polling ซึ่งสร้าง script ภายใน iframe
+- CSP รุ่นเดิมอนุญาต Firebase เฉพาะ connect-src แต่ script-src ไม่อนุญาต
+  โดเมน Firebase และ frame-src เป็น none ทำให้ long-polling ถูกบล็อก
+- การลบข้อมูลเว็บไซต์ทำให้คีย์ previous_websocket_failure หาย จึงกลับไปใช้
+  WebSocket ได้ชั่วคราว นี่คือเหตุผลที่ลบข้อมูลแล้วดูเหมือนหาย
+
+สิ่งที่แก้ใน V3.2.2:
+- เปิด script-src เฉพาะ *.firebasedatabase.app และ *.firebaseio.com
+- เปลี่ยน frame-src จาก none เป็น self เพื่อให้ iframe ภายในของ long-polling ทำงาน
+- ล้างเฉพาะ firebase:previous_websocket_failure หนึ่งครั้งตอนอัปเกรด
+- ไม่ลบข้อมูลล็อกอิน, ske_outbox_v1, ข้อมูลแอป หรือ Cache Storage อื่น
+- เพิ่ม Transport flag และ CSP blocked ใน Debug Log เพื่อยืนยันผลจากเครื่องจริง
+- คงระบบ restart transport และ service worker แบบไม่ดัก fetch จาก V3.2.1
+
+วิธีอัปโหลดทดสอบ:
+1. อัปโหลด index.html, sw.js, firebase-messaging-sw.js และ manifest.json พร้อมกัน
+2. รอ GitHub Pages deploy สำเร็จ
+3. เปิดเว็บตามปกติ ไม่ต้องลบข้อมูลเว็บไซต์
+4. ตรวจเลขเวอร์ชัน: v2026.07.26-dev-v3.2.2-transport-fix
+5. ทดสอบ Wi‑Fi → 4G/5G → Wi‑Fi อย่างน้อย 5 รอบ
+6. แต่ละรอบรอไม่เกิน 25–30 วินาที และทดลองบันทึกสถานะจริงหลังเชื่อมกลับ
+7. ทดสอบ Airplane Mode และ background/resume เพิ่มอย่างละ 3 รอบ
+
+ค่าที่ควรเห็นใน Debug Log:
+- Firebase .info/connected: true
+- Firebase previous websocket failure อาจเป็น null หรือ true ก็ได้
+  (ถ้าเป็น true ระบบต้องยังต่อได้ผ่าน long-polling)
+- ต้องไม่มีบรรทัด "CSP blocked" ที่ชี้ไปยัง firebasedatabase.app/firebaseio.com
+
+ถ้ายังค้าง:
+- แตะเลขเวอร์ชัน 5 ครั้ง แล้วส่ง Debug Log ชุดใหม่
+- ส่งบรรทัด "CSP blocked" ทั้งหมดถ้ามี
+- ไม่ต้องลบข้อมูลเว็บไซต์
+
+เวอร์ชัน: v2026.07.26-dev-v3.2.2-transport-fix
