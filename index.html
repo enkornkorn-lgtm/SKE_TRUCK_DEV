@@ -570,6 +570,36 @@
     return null;
   }
 
+  // กัน Firebase realtime snapshot เก่าทับจังหวัด/สถานะที่ผู้ใช้กำลังบันทึก
+  const _pendingEmployeePatches = new Map();
+  function _applyPendingEmployeePatches(list) {
+    if (!Array.isArray(list) || !_pendingEmployeePatches.size) return list;
+    return list.map(emp => {
+      const patch = emp && _pendingEmployeePatches.get(emp.id);
+      return patch ? { ...emp, ...patch } : emp;
+    });
+  }
+  function _firebaseValueMatches(actual, expected) {
+    const normalizedActual = actual === undefined ? null : actual;
+    const normalizedExpected = expected === undefined ? null : expected;
+    return JSON.stringify(normalizedActual) === JSON.stringify(normalizedExpected);
+  }
+  async function _verifyEmployeePatch(key, empId, patch) {
+    const snap = await _withTimeout(
+      get(ref(db, `employees/${key}`)),
+      SKE_WRITE_TIMEOUT_MS,
+      'timeout:employees-verify'
+    );
+    const saved = snap.val();
+    if (!saved || saved.id !== empId) throw new Error('employee verify failed: id mismatch');
+    for (const field of Object.keys(patch)) {
+      if (!_firebaseValueMatches(saved[field], patch[field])) {
+        throw new Error(`employee verify failed: ${field}`);
+      }
+    }
+    return saved;
+  }
+
   // ══ คลังรูปแยก (photo store) ══
   // หัวใจของการลด bandwidth: ข้อมูลหลัก (employees/repairs/ฯลฯ) เก็บแค่ "รหัสรูป" (ph_...)
   // ตัวรูป base64 จริงแยกเก็บที่โหนด photos/{id} ซึ่ง "ไม่มี listener" — จะโหลดก็ต่อเมื่อผู้ใช้เปิดดูเท่านั้น
@@ -601,7 +631,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[SKE TRUCK] app version: v2026.07.26-dev-v3.2.2-transport-fix');
+  console.log('[SKE TRUCK] app version: v2026.07.26-dev-v3.2.3-province-save-fix');
   const SKE_OUTBOX_KEY = 'ske_outbox_v1';
   // งานค้างมีอายุจำกัด — เกินนี้ให้ "ทิ้ง" แทนที่จะส่งซ้ำ เพราะ payload เป็นข้อมูลทั้งชุด ณ เวลานั้น
   // ถ้าปล่อยให้คิวเก่าหลายนาที/ชั่วโมงส่งสำเร็จทีหลัง มันจะเอาข้อมูล "ทั้งก้อนเวอร์ชันเก่า" ทับขึ้นเซิร์ฟเวอร์
@@ -649,7 +679,7 @@
         _obClear(key);
         return;
       }
-      if (key === 'employees' && window.fbSaveEmployees) window.fbSaveEmployees(entry.payload);
+      if (key === 'employees' && window.fbSaveEmployees) window.fbSaveEmployees(entry.payload).catch(() => {});
       else if (key === 'vehicles' && window.fbSaveVehicles) window.fbSaveVehicles(entry.payload);
       else if (key === 'repairs' && window.fbSaveRepairs) window.fbSaveRepairs(entry.payload);
       else if (key === 'fluidLogs' && window.fbSaveFluidLogs) window.fbSaveFluidLogs(entry.payload);
@@ -774,21 +804,36 @@
     _obMark('employees', emps);
     return _withTimeout(set(ref(db, 'employees'), emps), SKE_WRITE_TIMEOUT_MS, 'timeout:employees')
       .then(() => { _obClear('employees'); })
-      .catch(e => console.error('fbSave error', e));
+      .catch(e => {
+        console.error('fbSave error', e);
+        throw e;
+      });
   };
 
   // อัพเดทเฉพาะ "ของพนักงานคนเดียว" (ดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์มาก่อนแล้วแก้เฉพาะฟิลด์ที่เปลี่ยน)
   // ป้องกันปัญหาเขียนทับทั้งรายชื่อแล้วทำสถานะของพนักงานคนอื่นที่เพิ่งอัพเดทไปหายโดยไม่ได้ตั้งใจ
   // ครอบด้วย timeout กันเคสเน็ตช้า/หลุดกลางทางแล้วค้างรอไม่มีกำหนด (จุดที่ .catch fallback ของทุกจุดเรียกจะยังทำงานได้)
   window.fbUpdateEmployeeFields = async function(empId, patch) {
+    const stablePatch = { ...patch };
+    _pendingEmployeePatches.set(empId, stablePatch);
+    try {
+      const key = await _findServerKey('employees', empId, employees);
+      if (key == null) throw new Error('employee not found');
+      const updates = {};
+      Object.keys(stablePatch).forEach(k => { updates[`employees/${key}/${k}`] = stablePatch[k]; });
+      await _withTimeout(update(ref(db), updates), SKE_WRITE_TIMEOUT_MS, 'timeout:employees-update');
+      await _verifyEmployeePatch(key, empId, stablePatch);
+      employees = (employees || []).map(e => e && e.id === empId ? { ...e, ...stablePatch } : e);
+      _skeCacheSet('ske_emp', employees);
+      _obClear('employees');
+    } finally {
+      _pendingEmployeePatches.delete(empId);
+    }
+  };
+  window.fbVerifyEmployeeFields = async function(empId, patch) {
     const key = await _findServerKey('employees', empId, employees);
-    if (key == null) throw new Error('employee not found');
-    const updates = {};
-    Object.keys(patch).forEach(k => { updates[`employees/${key}/${k}`] = patch[k]; });
-    await _withTimeout(update(ref(db), updates), SKE_WRITE_TIMEOUT_MS, 'timeout:employees-update');
-    employees = (employees || []).map(e => e && e.id === empId ? { ...e, ...patch } : e);
-    _skeCacheSet('ske_emp', employees);
-    _obClear('employees');
+    if (key == null) throw new Error('employee verify failed: employee not found');
+    return _verifyEmployeePatch(key, empId, patch);
   };
 
   // บันทึกรายการรถทั้งหมดขึ้น Firebase (ทะเบียนรถเป็น "เอนทิตี้แยก" ไม่ผูกกับพนักงานอีกต่อไป)
@@ -897,7 +942,7 @@
   // ดึงข้อมูลล่าสุดจาก Firebase ทันที (สำหรับปุ่มรีเฟรชของผู้ดูแล)
   window.fbForceRefresh = function(cb) {
     get(ref(db, 'employees')).then(snapshot => {
-      const data = normalizeEmployees(snapshot.val());
+      const data = _applyPendingEmployeePatches(normalizeEmployees(snapshot.val()));
       if (data && data.length > 0) {
         employees = data;
         _skeCacheSet('ske_emp', employees);
@@ -921,7 +966,7 @@
   // ไม่นับเป็น "การเปลี่ยนสถานะสด" — กันไม่ให้เด้งแจ้งเตือน+เสียงรัวๆ ย้อนหลังทุกครั้งที่เปิดแอพใหม่
   let _empSynced = false;
   onValue(ref(db, 'employees'), (snapshot) => {
-    const data = normalizeEmployees(snapshot.val());
+    const data = _applyPendingEmployeePatches(normalizeEmployees(snapshot.val()));
     if (_obHasFresh('employees')) {
       // ยังมีงานค้างส่งของเครื่องนี้อยู่ — ข้อมูลเซิร์ฟเวอร์ตอนนี้เก่ากว่าของเครื่อง อย่าเพิ่งเอามาทับ
       // (setInterval ใน _obFlushAll จะพยายามส่งซ้ำเองจนสำเร็จ แล้วค่อยปล่อยให้ onValue รอบถัดไปทำงานตามปกติ)
@@ -1105,7 +1150,7 @@
       _obFlushAll();
       // เพิ่งกลับมาเชื่อมต่อได้ → sync ข้อมูลทุกชุดทันที (onValue จะ replay ให้เองอยู่แล้ว แต่ get ย้ำให้ชัวร์+เร็ว)
       get(ref(db, 'employees')).then(s => {
-        const d = normalizeList(s.val());
+        const d = _applyPendingEmployeePatches(normalizeList(s.val()));
         if (d && d.length > 0) {
           employees = d;
           _skeCacheSet('ske_emp', employees);
@@ -1122,7 +1167,7 @@
   });
 
   get(ref(db, 'employees')).then(snapshot => {
-    const data = normalizeList(snapshot.val());
+    const data = _applyPendingEmployeePatches(normalizeList(snapshot.val()));
     if (data && data.length > 0) {
       // Firebase มีข้อมูลอยู่แล้ว → ใช้เป็นข้อมูลหลักเสมอ
       employees = data;
@@ -2092,7 +2137,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.26-dev-v3.2.2-transport-fix</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.26-dev-v3.2.3-province-save-fix</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2100,7 +2145,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">สถานะรถ SKE</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">SK EVO LOGISTICS · v2026.07.26-dev-v3.2.2-transport-fix</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">SK EVO LOGISTICS · v2026.07.26-dev-v3.2.3-province-save-fix</div>
       </div>
     </div>
 
@@ -2218,7 +2263,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.26-dev-v3.2.2-transport-fix</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">สถานะรถ SKE</div><div class="topbar-sub">SK EVO LOGISTICS · <span class="ske-version-tag" style="opacity:.7">v2026.07.26-dev-v3.2.3-province-save-fix</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -2474,7 +2519,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png" alt="SKE LOGISTICS"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.26-dev-v3.2.2-transport-fix</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.26-dev-v3.2.3-province-save-fix</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3102,7 +3147,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.26-dev-v3.2.2-transport-fix';
+const SKE_APP_VERSION='v2026.07.26-dev-v3.2.3-province-save-fix';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -3198,13 +3243,26 @@ function _cacheSet(key,value){
 // 2) ถ้าล้มเหลวค่อย fallback ส่งทั้งก้อน — แต่ต้อง "ใส่ patch กลับเข้าไปใหม่ก่อนส่งเสมอ"
 //    เพราะกว่าจะถึงตอน fallback ตัวแปร employees อาจถูก realtime ทับด้วยข้อมูลเก่า (ที่ยังไม่มีสถานะใหม่) ไปแล้ว
 //    ถ้าส่งทั้งก้อนโดยไม่ใส่ patch กลับ = สถานะที่พนักงานเพิ่งกดยืนยันจะหายถาวร (บั๊ก "สถานะเด้งกลับ")
-function fbPatchEmployee(empId,patch){
+async function fbPatchEmployee(empId,patch){
   const reapply=()=>{employees=(employees||[]).map(e=>e&&e.id===empId?{...e,...patch}:e);_cacheSet('ske_emp',employees);};
   if(window.fbUpdateEmployeeFields){
-    return window.fbUpdateEmployeeFields(empId,patch).catch(()=>{reapply();if(window.fbSaveEmployees)return window.fbSaveEmployees(employees);});
+    try{
+      return await window.fbUpdateEmployeeFields(empId,patch);
+    }catch(firstError){
+      reapply();
+      if(!window.fbSaveEmployees)throw firstError;
+      await window.fbSaveEmployees(employees);
+      if(window.fbVerifyEmployeeFields)await window.fbVerifyEmployeeFields(empId,patch);
+      return;
+    }
   }
-  if(window.fbSaveEmployees){reapply();return window.fbSaveEmployees(employees);}
-  return Promise.resolve();
+  if(window.fbSaveEmployees){
+    reapply();
+    await window.fbSaveEmployees(employees);
+    if(window.fbVerifyEmployeeFields)await window.fbVerifyEmployeeFields(empId,patch);
+    return;
+  }
+  throw new Error('Firebase employee writer is not ready');
 }
 
 // ══ คลังรูปฝั่งแอป ══
@@ -6794,6 +6852,9 @@ async function doSave(){
       await fbPatchEmployee(currentUser.id,patch);
     } else if(window.fbSaveEmployees){
       await window.fbSaveEmployees(employees);
+      if(window.fbVerifyEmployeeFields)await window.fbVerifyEmployeeFields(currentUser.id,patch);
+    } else {
+      throw new Error('Firebase employee writer is not ready');
     }
     showEmployeeStatusSavedPopup();
   }catch(e){
