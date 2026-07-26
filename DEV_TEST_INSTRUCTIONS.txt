@@ -1,18 +1,14 @@
-DEV ONLY — V3.1 Reconnect + Logo V2 (Safe Service Worker)
+DEV ONLY — V3.1 Long Polling + Logo V4
 
-แก้เพิ่มจาก V1 เฉพาะ Service Worker/cache:
-- ไม่ runtime-cache คำขอใด ๆ
-- Firebase, Long Polling lp?start=, gstatic, googleapis และ cross-origin ทั้งหมดผ่าน network ตรง
-- cache เฉพาะ manifest และรูป static 3 ไฟล์
-- cache name แยก DEV ไม่ชน Production ที่อยู่ origin เดียวกัน
-- activate ลบเฉพาะ cache DEV รุ่นก่อน ไม่ลบ cache ของ Production
+- forceLongPolling() ก่อน getDatabase()
+- ปิดและถอน Service Worker ของ DEV
+- ลบ cache ที่ชื่อมี ske-truck-dev
+- ไม่มี goOffline/goOnline
+- ไม่มี hard reload หรือ reconnect timer
+- หน้าเริ่มต้นยังเป็นโลโก้พื้นขาว
 
-ก่อนทดสอบ:
-1) อัปทั้งชุดลง DEV
-2) ลบข้อมูลเว็บไซต์ของ enkornkorn-lgtm.github.io หนึ่งครั้ง เพื่อเอา cache เก่าที่สะสมออก
-3) เปิด DEV ใหม่ แล้วตรวจพื้นที่จัดเก็บหลังใช้งาน/สลับเครือข่ายหลายรอบ
-
-ทดสอบ Wi-Fi ↔ 4G, Airplane Mode, background/resume และการอ่าน/เขียนข้อมูลจริง
+อัปทั้งชุดลง DEV แล้วเปิดหนึ่งครั้ง ปิด Chrome และเปิดใหม่ก่อนทดสอบ
+ทดสอบ Wi-Fi↔4G, Airplane Mode, background/resume และอ่าน/เขียนข้อมูลจริง
 ห้ามอัป Production จนกว่า DEV จะผ่าน
 
-เวอร์ชัน: v2026.07.26-dev-v3.1-reconnect-logo-v2-sw-safe
+เวอร์ชัน: v2026.07.26-dev-v3.1-long-polling-no-sw-v4
