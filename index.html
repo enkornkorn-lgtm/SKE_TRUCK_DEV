@@ -13,6 +13,7 @@
   default-src 'self';
   script-src 'self' 'unsafe-inline'
     https://www.gstatic.com
+    https://www.google.com/recaptcha/
     https://*.firebasedatabase.app
     https://*.firebaseio.com;
   style-src 'self' 'unsafe-inline';
@@ -25,9 +26,12 @@
     https://*.firebasedatabase.app wss://*.firebasedatabase.app
     https://*.firebaseio.com wss://*.firebaseio.com
     https://*.googleapis.com
+    https://www.google.com/recaptcha/
     https://api.open-meteo.com;
   worker-src 'self';
-  frame-src 'self';
+  frame-src 'self'
+    https://www.google.com/recaptcha/
+    https://recaptcha.google.com/recaptcha/;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
@@ -43,6 +47,7 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
   import { getDatabase, ref, set, onValue, get, update, remove, runTransaction, goOffline, goOnline } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
   import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-messaging.js";
 
@@ -55,6 +60,14 @@
     messagingSenderId: "314092602910",
     appId: "1:314092602910:web:67a73245abd287c2ddd00f"
   };
+
+  // ── FIREBASE APP CHECK (reCAPTCHA Enterprise) ────────────────────────────
+  // ใช้โปรเจกต์ทดลองนี้ทดสอบก่อนตัวหลัก เมื่อสร้างและลงทะเบียน key แล้ว
+  // ให้วาง Site Key แทนข้อความ PASTE_... ด้านล่าง
+  // ตราบใดที่ยังเป็น PASTE_... แอพจะทำงานเหมือนเดิมและยังไม่ส่ง App Check token
+  const APP_CHECK_SITE_KEY = "6LeoHGgtAAAAAHnPhBQLViVYNNb5HhQ7IOOEUqTm";
+  const APP_CHECK_CONFIGURED =
+    APP_CHECK_SITE_KEY.length > 0 && !APP_CHECK_SITE_KEY.startsWith('PASTE_');
 
   // ── V3.2.2 TRANSPORT STORAGE MIGRATION ────────────────────────────────────
   // Firebase บันทึกคีย์นี้เมื่อ WebSocket เคยล้มเหลว แล้วการเชื่อมต่อรอบถัดไป
@@ -75,6 +88,24 @@
   } catch (_) {}
 
   const app = initializeApp(firebaseConfig);
+  let appCheck = null;
+  if (APP_CHECK_CONFIGURED) {
+    try {
+      appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
+        isTokenAutoRefreshEnabled: true
+      });
+      console.info('[SKE App Check] เปิดใช้งาน reCAPTCHA Enterprise แล้ว');
+    } catch (error) {
+      console.error('[SKE App Check] เริ่มทำงานไม่สำเร็จ', error);
+    }
+  } else {
+    console.info('[SKE App Check] รอใส่ reCAPTCHA Enterprise Site Key');
+  }
+  window._skeAppCheckStatus = {
+    configured: APP_CHECK_CONFIGURED,
+    initialized: Boolean(appCheck)
+  };
   const db = getDatabase(app);
 
   // ── NETWORK HANDOFF RECOVERY V3.2.2 ──────────────────────────────────────
@@ -691,7 +722,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v2026.07.27-trial-firebase-v1-job-queue');
+  console.log('[TRUCK TEST] app version: v2026.07.27-trial-firebase-v1-app-check-enterprise');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -2601,7 +2632,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-job-queue</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-app-check-enterprise</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2609,7 +2640,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.27-trial-firebase-v1-job-queue</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.27-trial-firebase-v1-app-check-enterprise</div>
       </div>
     </div>
 
@@ -2727,7 +2758,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-job-queue</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-app-check-enterprise</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -2983,7 +3014,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.27-trial-firebase-v1-job-queue</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.27-trial-firebase-v1-app-check-enterprise</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3611,7 +3642,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.27-trial-firebase-v1-job-queue';
+const SKE_APP_VERSION='v2026.07.27-trial-firebase-v1-app-check-enterprise';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
