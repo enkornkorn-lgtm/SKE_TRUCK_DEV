@@ -722,7 +722,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v2026.07.27-trial-firebase-v1-app-check-v3');
+  console.log('[TRUCK TEST] app version: v2026.07.27-trial-firebase-v2-province-fix-app-check-v3');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -2632,7 +2632,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-app-check-v3</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v2-province-fix-app-check-v3</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2640,7 +2640,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.27-trial-firebase-v1-app-check-v3</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.27-trial-firebase-v2-province-fix-app-check-v3</div>
       </div>
     </div>
 
@@ -2758,7 +2758,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-app-check-v3</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v2-province-fix-app-check-v3</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -3014,7 +3014,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.27-trial-firebase-v1-app-check-v3</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.27-trial-firebase-v2-province-fix-app-check-v3</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3642,7 +3642,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.27-trial-firebase-v1-app-check-v3';
+const SKE_APP_VERSION='v2026.07.27-trial-firebase-v2-province-fix-app-check-v3';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -7460,6 +7460,7 @@ async function doSave(){
   if(selectedBtn?.id)_selStatus=selectedBtn.id.replace('sopt_','');
   const note=document.getElementById('noteInp')?.value||'';
   const provSel=document.getElementById('provSel');
+  const empId=currentUser.id;
   // พนักงานตำแหน่งออฟฟิศ (เช่นแอดมิน) หรือไม่มีทะเบียนรถผูกอยู่ ไม่ต้องเลือกจังหวัดสแตนบาย
   const isOffice=!isDrivingPosition(currentUser?.position)||!(currentUser&&currentUser.plate);
   if(isOffice&&_selStatus==='standby'){
@@ -7467,7 +7468,7 @@ async function doSave(){
     return;
   }
   const needProv=!isOffice&&(_selStatus==='standby'||_selStatus==='traveling'||_selStatus==='returning'||_selStatus==='done');
-  const prov=needProv?(provSel?provSel.value:_selProv)||'':'';
+  const prov=needProv?String((provSel?provSel.value:_selProv)||'').trim():'';
   if(needProv&&!prov){
     alert('⚠️ กรุณาเลือกจังหวัดก่อนบันทึกสถานะ');
     if(provSel){provSel.focus();provSel.style.borderColor='#DC2626';provSel.style.boxShadow='0 0 0 2px #FCA5A5';}
@@ -7480,7 +7481,7 @@ async function doSave(){
   }
   const now=new Date().toISOString();
   // บันทึก standbyAt เมื่อเปลี่ยนมาเป็น standby ครั้งแรก
-  const prev=employees.find(e=>e.id===currentUser.id);
+  const prev=employees.find(e=>e.id===empId);
   const standbyAt=(_selStatus==='standby'&&prev?.status!=='standby')?now:(prev?.standbyAt||null);
   // เมื่อพนักงานกด "สแตนบายว่างงาน" ถือว่าจบงานปัจจุบัน:
   // ปิดแถวงานเดิม แล้วเลื่อนงาน queued แรกขึ้นเป็น "ได้งานแล้ว" อัตโนมัติ
@@ -7505,19 +7506,34 @@ async function doSave(){
     standbyAt:_selStatus==='standby'?standbyAt:null,
     ...clearJobLinkWhenLeavingGotJob(_selStatus)
   };
-  recordRunLogIfNeeded(prev,_selStatus,note,currentUser.id,prev?.plate||currentUser.plate,prev?.name||currentUser.name);
-  employees=employees.map(e=>e.id===currentUser.id?{...e,...patch}:e);
-  currentUser={...currentUser,...patch};
-  saveU();editOpen=false;closeStatusModal(false);renderDashboard();
-  _cacheSet('ske_trial_fb_emp', employees);
+  recordRunLogIfNeeded(prev,_selStatus,note,empId,prev?.plate||currentUser.plate,prev?.name||currentUser.name);
+  const reapplySavedPatch=()=>{
+    employees=(employees||[]).map(e=>e&&e.id===empId?{...e,...patch}:e);
+    if(currentUser?.id===empId)currentUser={...currentUser,...patch};
+    _cacheSet('ske_trial_fb_emp',employees);
+    saveU();
+  };
+  reapplySavedPatch();
+
+  // เริ่มเขียนก่อนปิด modal/renderDashboard เพื่อให้ outbox ถูกสร้างแบบ synchronous
+  // แล้ว onValue ที่ถูกเข้าคิวด้วยจังหวัดเก่าจะไม่สามารถย้อนมาทับค่าที่ผู้ใช้เพิ่งเลือกได้
+  let savePromise;
+  if(window.fbUpdateEmployeeFields){
+    savePromise=fbPatchEmployee(empId,patch);
+  }else if(window.fbSaveEmployees){
+    savePromise=window.fbSaveEmployees(employees);
+  }else{
+    savePromise=Promise.reject(new Error('Firebase employee writer is not ready'));
+  }
+
+  editOpen=false;closeStatusModal(false);renderDashboard();
   // รอผลการบันทึกจริงก่อนแจ้งผล — เดิมยิงแบบไม่รอผลแล้วโชว์ "บันทึกสำเร็จ" ทันที
   // ทำให้เน็ตสะดุดแล้วพนักงานเห็น "สำเร็จ" ทั้งที่ยังไม่ถึงเซิร์ฟเวอร์จริง ต้องกดซ้ำหลายรอบกว่าจะติด
   try{
-    if(window.fbUpdateEmployeeFields){
-      await fbPatchEmployee(currentUser.id,patch);
-    } else if(window.fbSaveEmployees){
-      await window.fbSaveEmployees(employees);
-    }
+    await savePromise;
+    // ย้ำ state/cache หลัง transaction สำเร็จ เผื่อ callback เก่าถูกเข้าคิวก่อนหน้า
+    reapplySavedPatch();
+    renderDashboard();
     if(promotedJob){
       showDocUploadToast('✅ จบงานเดิมแล้ว — ระบบเลื่อนงานถัดไปขึ้นเป็น "ได้งานแล้ว" อัตโนมัติ',true);
     }else{
@@ -7525,6 +7541,8 @@ async function doSave(){
     }
   }catch(e){
     // เน็ตช้า/หลุด — ข้อมูลถูกคิวไว้ใน outbox แล้ว (ระบบส่งซ้ำอัตโนมัติทุก 8 วิ) ไม่ต้องให้กดซ้ำ กันสถานะซ้อนกัน
+    reapplySavedPatch();
+    renderDashboard();
     console.warn('doSave: บันทึกไม่สำเร็จในทันที รอคิวส่งซ้ำอัตโนมัติ',e);
     showDocUploadToast('⚠️ เน็ตช้า/หลุดอยู่ — ระบบจะส่งสถานะนี้ต่อให้อัตโนมัติเมื่อสัญญาณกลับมา ไม่ต้องกดซ้ำ',false);
   }
