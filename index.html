@@ -691,7 +691,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v2026.07.27-trial-firebase-v1-test-logo');
+  console.log('[TRUCK TEST] app version: v2026.07.27-trial-firebase-v1-job-queue');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -1792,6 +1792,8 @@
       _skeCacheSet('ske_trial_fb_jobplan', data);
       const admin = document.getElementById('admin');
       if (admin && !admin.classList.contains('hidden') && typeof renderJobPlan === 'function') renderJobPlan();
+      const dashboard = document.getElementById('dashboard');
+      if (dashboard && !dashboard.classList.contains('hidden') && typeof renderDashboard === 'function') renderDashboard();
     } else if (!_firstSync.jobPlan) {
       const cache = (()=>{try{return JSON.parse(localStorage.getItem('ske_trial_fb_jobplan')||'[]');}catch(e){return [];}})();
       if (Array.isArray(cache) && cache.length) window.fbSaveJobPlan(cache).catch(e=>console.error('fb seed jobPlan error', e));
@@ -1804,6 +1806,8 @@
       localStorage.setItem('ske_trial_fb_jobplan', '[]');
       const admin = document.getElementById('admin');
       if (admin && !admin.classList.contains('hidden') && typeof renderJobPlan === 'function') renderJobPlan();
+      const dashboard = document.getElementById('dashboard');
+      if (dashboard && !dashboard.classList.contains('hidden') && typeof renderDashboard === 'function') renderDashboard();
     }
     _firstSync.jobPlan = true;
   });
@@ -2597,7 +2601,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-test-logo</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-job-queue</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2605,7 +2609,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.27-trial-firebase-v1-test-logo</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.27-trial-firebase-v1-job-queue</div>
       </div>
     </div>
 
@@ -2723,7 +2727,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-test-logo</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.27-trial-firebase-v1-job-queue</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -2979,7 +2983,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.27-trial-firebase-v1-test-logo</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.27-trial-firebase-v1-job-queue</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3607,7 +3611,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.27-trial-firebase-v1-test-logo';
+const SKE_APP_VERSION='v2026.07.27-trial-firebase-v1-job-queue';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -6788,6 +6792,7 @@ function renderDashboard(){
   }
   const leavePill=me.onLeave?leaveApprovalPill(me):null;
   const queueInfo=getQueuePosition(me);
+  const queuedJobs=getQueuedEmployeeJobRows(me);
 
   document.getElementById('adminBadge').classList.toggle('hidden',!adminMode);
   document.getElementById('navAdmin').style.display=adminMode?'flex':'none';
@@ -6813,6 +6818,13 @@ function renderDashboard(){
     ${(me.status==='got_job'&&me.note)?`<div style="margin-top:10px;background:#EEF2FF;border:2px solid #A5B4FC;border-radius:12px;padding:12px 14px;">
       <div style="font-size:12px;font-weight:800;color:#4F46E5;margin-bottom:5px;">📦 รายละเอียดงานที่ได้รับ</div>
       <div style="font-size:14.5px;color:#1a1a2e;font-weight:700;line-height:1.6;white-space:pre-wrap;">${esc(me.note)}</div>
+    </div>`:''}
+    ${queuedJobs.length?`<div style="margin-top:10px;background:#FFF7ED;border:2px solid #FDBA74;border-radius:12px;padding:12px 14px;">
+      <div style="font-size:12px;font-weight:900;color:#C2410C;margin-bottom:8px;">⏳ งานถัดไป ${queuedJobs.length} งาน — รอจบงานปัจจุบัน</div>
+      ${queuedJobs.map((job,index)=>`<div style="padding:${index?'9px 0 0':'0'};margin-top:${index?'9px':'0'};border-top:${index?'1px solid #FED7AA':'0'};">
+        <div style="font-size:11px;font-weight:900;color:#EA580C;">ลำดับที่ ${index+1}</div>
+        <div style="font-size:13px;color:#1a1a2e;font-weight:700;line-height:1.55;white-space:pre-wrap;">${esc(buildJobNoteText(job))}</div>
+      </div>`).join('')}
     </div>`:''}
     ${(me.note&&me.note.includes('ถูกยกเลิก'))?`<div style="margin-top:10px;background:#FEF2F2;border:2px solid #FCA5A5;border-radius:12px;padding:12px 14px;">
       <div style="font-size:12px;font-weight:800;color:#DC2626;margin-bottom:5px;">🚫 แจ้งเตือนงาน</div>
@@ -7397,8 +7409,12 @@ function selStat(id){
 }
 
 function clearJobLinkWhenLeavingGotJob(status){
-  return status==='got_job'?{}:{
-    jobWorkDate:null,
+  if(status==='got_job')return{};
+  // ระหว่างทำงาน (ขึ้นงาน/เดินทาง/ลงงาน/ไหลกลับ) ต้องเก็บ currentJobPlanId ไว้
+  // เพื่อให้งานที่จ่ายเพิ่มเข้าแถว queued ได้ถูกต้อง ล้างตัวชี้งานเมื่อจบงานหรือถูกสลับออกเท่านั้น
+  const clearCurrent=status==='done'||status==='inactive';
+  return {
+    ...(clearCurrent?{jobWorkDate:null,currentJobPlanId:null}:{}),
     previousStatus:null,
     previousProvince:null,
     previousNote:null,
@@ -7435,7 +7451,22 @@ async function doSave(){
   // บันทึก standbyAt เมื่อเปลี่ยนมาเป็น standby ครั้งแรก
   const prev=employees.find(e=>e.id===currentUser.id);
   const standbyAt=(_selStatus==='standby'&&prev?.status!=='standby')?now:(prev?.standbyAt||null);
-  const patch={
+  // เมื่อพนักงานกด "สแตนบายว่างงาน" ถือว่าจบงานปัจจุบัน:
+  // ปิดแถวงานเดิม แล้วเลื่อนงาน queued แรกขึ้นเป็น "ได้งานแล้ว" อัตโนมัติ
+  const promotedJob=_selStatus==='done'?await finishCurrentJobAndPromoteNext(prev):null;
+  const patch=promotedJob?{
+    status:'got_job',
+    province:'',
+    note:buildJobNoteText(promotedJob),
+    updatedAt:now,
+    standbyAt:null,
+    jobWorkDate:promotedJob.workDate||'',
+    currentJobPlanId:promotedJob.id,
+    previousStatus:'done',
+    previousProvince:prov,
+    previousNote:note,
+    previousStandbyAt:null
+  }:{
     status:_selStatus,
     province:prov,
     note,
@@ -7456,7 +7487,11 @@ async function doSave(){
     } else if(window.fbSaveEmployees){
       await window.fbSaveEmployees(employees);
     }
-    showEmployeeStatusSavedPopup();
+    if(promotedJob){
+      showDocUploadToast('✅ จบงานเดิมแล้ว — ระบบเลื่อนงานถัดไปขึ้นเป็น "ได้งานแล้ว" อัตโนมัติ',true);
+    }else{
+      showEmployeeStatusSavedPopup();
+    }
   }catch(e){
     // เน็ตช้า/หลุด — ข้อมูลถูกคิวไว้ใน outbox แล้ว (ระบบส่งซ้ำอัตโนมัติทุก 8 วิ) ไม่ต้องให้กดซ้ำ กันสถานะซ้อนกัน
     console.warn('doSave: บันทึกไม่สำเร็จในทันที รอคิวส่งซ้ำอัตโนมัติ',e);
@@ -8319,6 +8354,70 @@ function buildJobNoteText(row){
   return parts.join(' · ')||'ได้รับมอบหมายงาน';
 }
 
+// ══ คิวงานรายพนักงาน ═══════════════════════════════════════════════════════
+// ใช้แถวใน jobPlan เป็นแหล่งข้อมูลคิวโดยตรง เพื่อไม่ต้องบันทึกรายการงานซ้ำทั้งในพนักงานและแผนงาน
+// assignmentState: active = งานปัจจุบัน, queued = งานถัดไป, completed = จบแล้ว
+const JOB_ASSIGNMENT_DONE_STATES=new Set(['completed','cancelled']);
+const JOB_BUSY_STATUSES=new Set(['got_job','loading_bay','unload_bay','loading','unloading','traveling','returning','repairing']);
+function sortEmployeeJobRows(a,b){
+  return String(a.workDate||'').localeCompare(String(b.workDate||''))
+    ||String(a.standbyTime||'').localeCompare(String(b.standbyTime||''))
+    ||String(a.dispatchedAt||'').localeCompare(String(b.dispatchedAt||''))
+    ||String(a.id||'').localeCompare(String(b.id||''));
+}
+function getOpenEmployeeJobRows(empId,excludeRowId){
+  return (jobPlanRows||[])
+    .filter(r=>r&&r.dispatched&&String(r.empId||'')===String(empId||'')
+      &&r.id!==excludeRowId
+      &&r.workDate&&!isPastWorkDate(r.workDate)
+      &&!isCancelledJobPlanRow(r)
+      &&!JOB_ASSIGNMENT_DONE_STATES.has(r.assignmentState))
+    .sort(sortEmployeeJobRows);
+}
+function getCurrentEmployeeJobRow(emp,excludeRowId){
+  if(!emp)return null;
+  const rows=getOpenEmployeeJobRows(emp.id,excludeRowId);
+  const linkedId=String(emp.currentJobPlanId||'');
+  if(linkedId){
+    const linked=rows.find(r=>String(r.id)===linkedId);
+    if(linked)return linked;
+  }
+  const explicit=rows.find(r=>r.assignmentState==='active');
+  if(explicit)return explicit;
+  // รองรับข้อมูลเก่าก่อนมี assignmentState: ถ้าสถานะบอกว่ากำลังทำงาน ให้ถือแถวแรกที่จ่ายแล้วเป็นงานปัจจุบัน
+  if(JOB_BUSY_STATUSES.has(emp.status))return rows.find(r=>r.assignmentState!=='queued')||null;
+  return null;
+}
+function getQueuedEmployeeJobRows(emp){
+  if(!emp)return[];
+  const current=getCurrentEmployeeJobRow(emp);
+  return getOpenEmployeeJobRows(emp.id)
+    .filter(r=>r.id!==current?.id&&(r.assignmentState==='queued'||!!current))
+    .sort(sortEmployeeJobRows);
+}
+async function finishCurrentJobAndPromoteNext(emp){
+  if(!emp)return null;
+  const current=getCurrentEmployeeJobRow(emp);
+  const openRows=getOpenEmployeeJobRows(emp.id);
+  const changedIds=[];
+  if(current){
+    const completedAt=new Date().toISOString();
+    jobPlanRows=jobPlanRows.map(r=>r.id===current.id?{...r,assignmentState:'completed',completedAt}:r);
+    changedIds.push(current.id);
+  }
+  // ถ้างานเดิมไม่ได้มาจากแผนงาน (ข้อมูลรุ่นเก่า/งานที่กรอกเอง) จะไม่มี current แต่ยังเลื่อนแถว queued แรกได้
+  const next=openRows
+    .filter(r=>r.id!==current?.id)
+    .filter(r=>r.assignmentState==='queued'||!!current)
+    .sort(sortEmployeeJobRows)[0]||null;
+  if(next){
+    jobPlanRows=jobPlanRows.map(r=>r.id===next.id?{...r,assignmentState:'active',activatedAt:new Date().toISOString()}:r);
+    changedIds.push(next.id);
+  }
+  if(changedIds.length)await saveJobPlan(changedIds);
+  return next;
+}
+
 // บันทึกแผนงาน — ถ้าระบุ changedRowIds จะ transaction เฉพาะแถวเหล่านั้น
 // ถ้าไม่ระบุ ระบบจะเทียบ shadow แล้วส่งเฉพาะแถว/ฟิลด์ที่เปลี่ยน ไม่เขียนแผนงานทั้งก้อน
 async function saveJobPlan(changedRowIds){
@@ -8353,7 +8452,7 @@ function renderJobPlanRowTR(row){
     </td>
     <td style="padding:6px;text-align:center;min-width:76px;white-space:nowrap;position:sticky;right:0;background:${bg};box-shadow:-4px 0 6px -4px rgba(0,0,0,.15);">
       <button onclick="copyRouteToDate('${row.id}')" title="คัดลอกเส้นทางนี้ไปวันอื่น" style="background:none;border:none;color:#1E90D6;font-size:14px;cursor:pointer;">📋</button>
-      ${row.dispatched?'<span title="จ่ายงานแล้ว">✅</span>':`
+      ${row.dispatched?`<span title="${row.assignmentState==='queued'?'จ่ายงานแล้ว — อยู่ในคิวงานถัดไป':(row.assignmentState==='completed'?'จ่ายงานแล้ว — พนักงานจบงานแล้ว':'จ่ายงานแล้ว')}">${row.assignmentState==='queued'?'⏳ ':''}✅</span>`:`
         ${row.empId?`<button onclick="dispatchJobPlanRow('${row.id}')" title="จ่ายงานเส้นทางนี้เลย" style="background:none;border:none;color:#059669;font-size:14px;cursor:pointer;">🚀</button>`:''}
         <button onclick="delJobPlanRow('${row.id}')" title="ลบเส้นทางนี้" style="background:none;border:none;color:#DC2626;font-size:14px;cursor:pointer;">🗑️</button>`}
     </td>
@@ -8580,15 +8679,25 @@ function updateJobPlanField(id,field,value){
   // การแก้เส้นทาง/เวลา/หมายเหตุ เป็นแค่การแก้แผนในหน้าแอดมิน ต้องกดปุ่ม "จ่ายงาน" เท่านั้นถึงจะแจ้งพนักงานจริง
 }
 
-async function syncJobNoteToEmployee(row){
+async function syncJobNoteToEmployee(row,options={}){
   if(!row||!row.empId)return;
   // งานย้อนหลัง/งานยกเลิกเป็นข้อมูลประวัติเท่านั้น ห้ามนำกลับมาเปลี่ยนสถานะปัจจุบัน
   if(!row.workDate||isPastWorkDate(row.workDate)||isCancelledJobPlanRow(row)){
     console.warn('[SKE job plan] ข้ามการเปลี่ยนสถานะจากงานย้อนหลัง/งานยกเลิก',row.id||'');
-    return;
+    return{assignmentState:'history'};
   }
   const emp=employees.find(e=>e.id===row.empId);
   if(!emp)return;
+  const current=options.forceActivate?null:getCurrentEmployeeJobRow(emp,options.excludeRowId);
+  const busyWithoutPlan=!current&&JOB_BUSY_STATUSES.has(emp.status)&&String(emp.currentJobPlanId||'')!==String(row.id||'');
+  // มีงานปัจจุบันที่ยังไม่จบ: งานใหม่ต้องต่อท้าย ห้ามทับ status/note ของงานแรก
+  if(!options.forceActivate&&((current&&current.id!==row.id)||busyWithoutPlan)){
+    jobPlanRows=jobPlanRows.map(r=>r.id===row.id?{...r,assignmentState:'queued',queuedAt:r.queuedAt||new Date().toISOString()}:r);
+    _cacheSet('ske_trial_fb_jobplan',jobPlanRows);
+    const dash=document.getElementById('dashboard');
+    if(dash&&!dash.classList.contains('hidden'))renderDashboard();
+    return{assignmentState:'queued',currentJobPlanId:current?.id||emp.currentJobPlanId||null};
+  }
   // จำสถานะ "ก่อนได้งาน" ไว้ ก่อนทับเป็น got_job — เผื่อไว้คืนกลับตอนงานถูกดึงออก (เช่น สแตนบายว่างงาน ก็ต้องกลับไปสแตนบายว่างงาน ไม่ใช่เหมารวมเป็นสแตนบายรอขึ้นงานเสมอ)
   // ถ้าตอนนี้เป็น got_job อยู่แล้ว (เช่น sync ซ้ำ/แก้ไขข้อมูลงานเดิม) ไม่ทับ previousStatus เดิมที่เคยจำไว้
   const alreadyGotJob=emp.status==='got_job';
@@ -8602,17 +8711,21 @@ async function syncJobNoteToEmployee(row){
     province:'',
     standbyAt:null,
     jobWorkDate:row.workDate||'',
+    currentJobPlanId:row.id,
     previousStatus:prevStatus,
     previousProvince:prevProvince,
     previousNote:prevNote,
     previousStandbyAt:prevStandbyAt,
     updatedAt:new Date().toISOString()
   };
+  jobPlanRows=jobPlanRows.map(r=>r.id===row.id?{...r,assignmentState:'active',activatedAt:r.activatedAt||new Date().toISOString()}:r);
+  _cacheSet('ske_trial_fb_jobplan',jobPlanRows);
   employees=employees.map(e=>e.id===row.empId?{...e,...patch}:e);
   _cacheSet('ske_trial_fb_emp',employees);
   try{ await fbPatchEmployee(row.empId,patch); }catch(e){console.warn('sync job note error',e);}
   const dash=document.getElementById('dashboard');
   if(dash&&!dash.classList.contains('hidden'))renderDashboard();
+  return{assignmentState:'active',currentJobPlanId:row.id};
 }
 // คืนสถานะพนักงานเมื่อถูกถอด/สลับออกจากแถวหนึ่ง (เฉพาะกรณีที่เคยจ่ายงานไปแล้วจริง) — แต่ก่อนคืนสถานะ เช็คก่อนว่า "ยังมีงานอื่นค้างอยู่ไหม"
 // (เผื่อคนคนเดียวถูกมอบหมายมากกว่า 1 เส้นทาง/วัน) ถ้ามีงานอื่นค้าง ให้คงสถานะ "ได้งานแล้ว" ไว้ตามงานที่เหลือแทน ไม่คืนทับ
@@ -8620,14 +8733,18 @@ async function syncJobNoteToEmployee(row){
 // (ถ้าแอดมินอยากแจ้งพนักงานว่างานถูกยกเลิกจริงๆ ให้ไปพิมพ์ในช่องหมายเหตุตอนแก้ไขสถานะเองแทน)
 async function revertJobAssignment(empId,excludeRowId){
   const emp=employees.find(e=>e.id===empId);
+  const removedRow=jobPlanRows.find(r=>r.id===excludeRowId);
+  const current=getCurrentEmployeeJobRow(emp);
+  // ถอดเฉพาะงาน queued: เอาออกจากคิวอย่างเดียว ห้ามเปลี่ยนสถานะงานปัจจุบัน
+  if(removedRow?.assignmentState==='queued'||(current&&current.id!==excludeRowId))return;
   // ถ้าพนักงานเปลี่ยนเป็นสถานะอื่นไปแล้ว แปลว่าสถานะปัจจุบันใหม่กว่างานที่กำลังถอด
   // ห้ามงานในแผน (โดยเฉพาะแถวย้อนหลัง) ดึงกลับไปเป็น got_job หรือ previousStatus อีก
   if(!emp||emp.status!=='got_job')return;
-  const otherRow=jobPlanRows
-    .filter(r=>r.id!==excludeRowId&&r.empId===empId&&r.dispatched&&r.workDate&&!isPastWorkDate(r.workDate)&&!isCancelledJobPlanRow(r))
-    .sort((a,b)=>(a.workDate||'').localeCompare(b.workDate||'')||(a.standbyTime||'').localeCompare(b.standbyTime||''))[0];
+  const otherRow=getOpenEmployeeJobRows(empId,excludeRowId)[0];
   if(otherRow){
-    await syncJobNoteToEmployee(otherRow);
+    jobPlanRows=jobPlanRows.map(r=>r.id===otherRow.id?{...r,assignmentState:'active',activatedAt:new Date().toISOString()}:r);
+    await syncJobNoteToEmployee(jobPlanRows.find(r=>r.id===otherRow.id),{forceActivate:true,excludeRowId});
+    await saveJobPlan(otherRow.id);
     return;
   }
   const restoreStatus=emp?.previousStatus||'standby';
@@ -8637,6 +8754,7 @@ async function revertJobAssignment(empId,excludeRowId){
     province:emp?.previousProvince||'',
     standbyAt:restoreStatus==='standby'?(emp?.previousStandbyAt||new Date().toISOString()):null,
     jobWorkDate:null,
+    currentJobPlanId:null,
     previousStatus:null,
     previousProvince:null,
     previousNote:null,
@@ -8679,8 +8797,12 @@ async function onJobPlanEmpChange(id,empId){
     if(isPastWorkDate(row.workDate)){
       showDocUploadToast(`✅ บันทึกเปลี่ยนเป็น "${emp.name}" แล้ว (ไม่ได้แจ้งเตือน เพราะวันที่ผ่านไปแล้ว)`,true);
     }else{
-      await syncJobNoteToEmployee(jobPlanRows.find(r=>r.id===id));
-      showDocUploadToast(`✅ ส่งงานนี้ให้ "${emp.name}" แทนแล้ว`,true);
+      const result=await syncJobNoteToEmployee(jobPlanRows.find(r=>r.id===id));
+      jobPlanRows=jobPlanRows.map(r=>r.id===id?{...r,assignmentState:result?.assignmentState||r.assignmentState}:r);
+      await saveJobPlan(id);
+      showDocUploadToast(result?.assignmentState==='queued'
+        ?`✅ ส่งงานนี้ให้ "${emp.name}" เป็นงานถัดไปแล้ว`
+        :`✅ ส่งงานนี้ให้ "${emp.name}" แทนแล้ว`,true);
     }
   }
 }
@@ -8700,7 +8822,7 @@ function exportJobPlanCSV(){
         r.plate||'',
         r.phone||'',
         r.remark||'',
-        r.dispatched?'จ่ายงานแล้ว':(r.empId?'รอจ่ายงาน':'ยังไม่มอบหมาย')
+        r.dispatched?(r.assignmentState==='queued'?'จ่ายงานแล้ว (งานถัดไป)':(r.assignmentState==='completed'?'จ่ายงานแล้ว (จบงานแล้ว)':'จ่ายงานแล้ว')):(r.empId?'รอจ่ายงาน':'ยังไม่มอบหมาย')
       ]);
     });
   const esc2=v=>{const s=String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
@@ -8726,11 +8848,20 @@ async function dispatchJobPlanRow(rowId){
     ? `วันที่ในแผนนี้ (${fmtJobDateFull(row.workDate)}) ผ่านไปแล้ว — ระบบจะบันทึกเป็นข้อมูลไว้เท่านั้น "จะไม่ส่งแจ้งเตือนไปหา ${row.empName}" ยืนยันบันทึกไหม?`
     : `ยืนยันจ่ายงานเส้นทางนี้ให้ "${row.empName}"?`;
   if(!confirm(confirmMsg))return;
-  if(!isPast)await syncJobNoteToEmployee(row);
-  jobPlanRows=jobPlanRows.map(r=>r.id===rowId?{...r,dispatched:true,dispatchedAt:new Date().toISOString()}:r);
+  const result=!isPast?await syncJobNoteToEmployee(row):null;
+  jobPlanRows=jobPlanRows.map(r=>r.id===rowId?{
+    ...r,
+    dispatched:true,
+    dispatchedAt:new Date().toISOString(),
+    ...(result?.assignmentState?{assignmentState:result.assignmentState}:{})
+  }:r);
   await saveJobPlan(rowId);
   renderJobPlan();
-  showDocUploadToast(isPast?`✅ บันทึกข้อมูล "${row.empName}" ไว้แล้ว (ไม่ได้แจ้งเตือน เพราะวันที่ผ่านไปแล้ว)`:`✅ จ่ายงานให้ "${row.empName}" แล้ว`,true);
+  showDocUploadToast(isPast
+    ?`✅ บันทึกข้อมูล "${row.empName}" ไว้แล้ว (ไม่ได้แจ้งเตือน เพราะวันที่ผ่านไปแล้ว)`
+    :(result?.assignmentState==='queued'
+      ?`✅ จ่ายงานให้ "${row.empName}" แล้ว — งานนี้ต่อคิวเป็นงานถัดไป`
+      :`✅ จ่ายงานให้ "${row.empName}" แล้ว`),true);
 }
 
 async function dispatchJobPlan(date){
@@ -8746,9 +8877,16 @@ async function dispatchJobPlan(date){
   if(incomplete===0&&!confirm(`ยืนยันจ่ายงานวันที่ ${dateLabel} ให้พนักงาน ${ready.length} คน?${pastNote}`))return;
   showDocUploadPopup(isPast?'กำลังบันทึกข้อมูล':'กำลังจ่ายงาน','กรุณารอสักครู่ อย่าเพิ่งปิดหน้านี้');
   const dispatchedIds=[];
+  let queuedCount=0;
   for(const row of ready){
-    if(!isPast)await syncJobNoteToEmployee(row);
-    jobPlanRows=jobPlanRows.map(r=>r.id===row.id?{...r,dispatched:true,dispatchedAt:new Date().toISOString()}:r);
+    const result=!isPast?await syncJobNoteToEmployee(row):null;
+    if(result?.assignmentState==='queued')queuedCount++;
+    jobPlanRows=jobPlanRows.map(r=>r.id===row.id?{
+      ...r,
+      dispatched:true,
+      dispatchedAt:new Date().toISOString(),
+      ...(result?.assignmentState?{assignmentState:result.assignmentState}:{})
+    }:r);
     dispatchedIds.push(row.id);
   }
   await saveJobPlan(dispatchedIds);
@@ -8756,7 +8894,7 @@ async function dispatchJobPlan(date){
   hideDocUploadPopup();
   alert(isPast
     ?`✅ บันทึกข้อมูลวันที่ ${dateLabel} ไว้แล้ว ${ready.length} รายการ (ไม่ได้แจ้งเตือนพนักงาน เพราะวันที่ผ่านไปแล้ว)`
-    :`✅ จ่ายงานวันที่ ${dateLabel} ให้พนักงาน ${ready.length} คนเรียบร้อยแล้ว — สถานะของทุกคนเปลี่ยนเป็น "ได้งานแล้ว" แล้ว`);
+    :`✅ จ่ายงานวันที่ ${dateLabel} เรียบร้อยแล้ว ${ready.length} รายการ${queuedCount?` — มี ${queuedCount} รายการต่อคิวเป็นงานถัดไป`:''}`);
 }
 
 // ══ เส้นทางหลักประจำสัปดาห์ (route templates) ══
