@@ -724,7 +724,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v2026.07.28-trial-v3-owner-watermark-app-check-v3');
+  console.log('[TRUCK TEST] app version: v2026.07.28-trial-v4-ske-logo-mark-app-check-v3');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -2585,32 +2585,22 @@ select.inp option{background:#fff;color:#1a1a2e;}
 @keyframes docSpin{to{transform:rotate(360deg)}}
 @keyframes docToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
-/* ── เครื่องหมายเจ้าของสำหรับรุ่นทดลอง ──
-   pointer-events:none ทำให้ลายน้ำไม่ขวางการแตะ กรอกข้อมูล หรือเลื่อนหน้าจอ */
-.ske-trial-owner-watermark{
-  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-24deg);
-  z-index:119900;pointer-events:none;user-select:none;white-space:nowrap;
-  color:rgba(30,64,175,.075);font-size:clamp(24px,5vw,52px);font-weight:1000;
-  letter-spacing:.16em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,.28);
-}
-.ske-trial-owner-badge{
-  position:fixed;left:8px;bottom:108px;z-index:99998;pointer-events:none;user-select:none;
-  max-width:calc(100vw - 190px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  padding:6px 10px;border-radius:999px;border:1px solid rgba(79,70,229,.28);
-  background:rgba(255,255,255,.88);color:#4338CA;box-shadow:0 4px 14px rgba(15,23,42,.10);
-  font-size:9.5px;font-weight:950;letter-spacing:.02em;backdrop-filter:blur(8px);
+/* ── โลโก้เจ้าของสำหรับรุ่นทดลอง ──
+   pointer-events:none ทำให้โลโก้ไม่ขวางการแตะ กรอกข้อมูล หรือเลื่อนหน้าจอ */
+.ske-trial-owner-logo{
+  position:fixed;left:10px;bottom:104px;z-index:99998;
+  width:78px;height:auto;opacity:.20;filter:grayscale(.15);mix-blend-mode:multiply;
+  pointer-events:none;user-select:none;
 }
 @media(max-width:420px){
-  .ske-trial-owner-watermark{font-size:22px;letter-spacing:.10em;}
-  .ske-trial-owner-badge{left:6px;bottom:106px;max-width:calc(100vw - 20px);font-size:8.5px;padding:5px 8px;}
+  .ske-trial-owner-logo{left:7px;bottom:102px;width:66px;opacity:.18;}
 }
 
 </style>
 </head>
 
 <body>
-<div class="ske-trial-owner-watermark" aria-hidden="true">SKE TRUCK · TRIAL</div>
-<div class="ske-trial-owner-badge" aria-label="ลิขสิทธิ์ SKE TRUCK">© 2026 SKE TRUCK · TRIAL LICENSE</div>
+<img class="ske-trial-owner-logo" src="ske-owner-mark.png?v=owner-v1" alt="" aria-hidden="true">
 <div id="trialFirebaseBadge" aria-label="รุ่นทดลองเชื่อมฐานข้อมูลแยก"
   style="position:fixed;right:8px;bottom:72px;z-index:99999;pointer-events:none;
   background:#EAF8FF;color:#075985;border:1px solid #7DD3FC;border-radius:999px;
@@ -2656,7 +2646,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.28-trial-v3-owner-watermark-app-check-v3</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2664,7 +2654,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.28-trial-v3-owner-watermark-app-check-v3</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</div>
       </div>
     </div>
 
@@ -2782,7 +2772,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.28-trial-v3-owner-watermark-app-check-v3</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -3038,7 +3028,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.28-trial-v3-owner-watermark-app-check-v3</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3666,7 +3656,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.28-trial-v3-owner-watermark-app-check-v3';
+const SKE_APP_VERSION='v2026.07.28-trial-v4-ske-logo-mark-app-check-v3';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
