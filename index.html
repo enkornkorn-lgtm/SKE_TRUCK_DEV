@@ -42,7 +42,7 @@
 <meta name="apple-mobile-web-app-title" content="TRUCK TEST">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<link rel="manifest" href="manifest.json?v=trial-latest-v3213t">
+<link rel="manifest" href="manifest.json?v=trial-latest-v3214t">
 <title>TRUCK TEST — Firebase Trial</title>
 <!-- Firebase SDK -->
 <script type="module">
@@ -479,7 +479,7 @@
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await navigator.serviceWorker.register('sw.js?v=trial-latest-v3213t', { updateViaCache: 'none' });
+      const swReg = await navigator.serviceWorker.register('sw.js?v=trial-latest-v3214t', { updateViaCache: 'none' });
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -721,7 +721,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v3.2.13T');
+  console.log('[TRUCK TEST] app version: v3.2.14T');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -2688,6 +2688,76 @@ select.inp option{background:#fff;color:#1a1a2e;}
   .ske-trial-owner-logo{left:7px;bottom:102px;width:66px;opacity:.18;}
 }
 
+/* ══ Dashboard status cards V3.2.14T ══ */
+.ske-summary-date{position:relative;overflow:hidden;text-align:center;margin-bottom:10px;padding:10px 14px;background:linear-gradient(135deg,#7542ED 0%,#168ED9 100%);border-radius:15px;box-shadow:0 8px 20px rgba(59,94,216,.20);}
+.ske-summary-date::after{content:"";position:absolute;inset:auto -28px -50px auto;width:128px;height:128px;border-radius:50%;background:rgba(255,255,255,.10);}
+.ske-summary-date-main{position:relative;z-index:1;font-size:16px;font-weight:900;color:#fff;letter-spacing:.7px;}
+.ske-summary-date-sub{position:relative;z-index:1;font-size:10.5px;color:rgba(255,255,255,.78);margin-top:2px;}
+.ske-summary-metrics{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px;}
+.ske-summary-metric{min-width:0;background:#fff;border-radius:16px;padding:12px;text-align:center;box-shadow:0 6px 18px rgba(15,23,42,.06);border:1px solid #E7EDF5;}
+.ske-summary-metric.ok{background:#F3FCF8;border-color:#8DE5BD;}
+.ske-summary-metric.warn{background:#FFF6F6;border-color:#FCA5A5;}
+.ske-summary-metric-value{font-size:29px;line-height:1;font-weight:950;color:#168ED9;}
+.ske-summary-metric.ok .ske-summary-metric-value{color:#0FB981;}
+.ske-summary-metric.warn .ske-summary-metric-value{color:#EF4444;}
+.ske-summary-metric-label{display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;color:#758092;margin-top:6px;font-weight:700;}
+.ske-summary-search{background:#fff;border:1px solid #CBE3F7;border-radius:16px;padding:10px 11px;margin-bottom:10px;box-shadow:0 5px 16px rgba(15,23,42,.05);}
+.ske-summary-search input{width:100%;padding:11px 12px;border:2px solid #2196D3;border-radius:12px;font-size:13.5px;box-sizing:border-box;outline:none;background:#fff;}
+.ske-summary-search input:focus{box-shadow:0 0 0 4px rgba(33,150,211,.12);}
+.ske-status-nav-label{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 2px 7px;color:#526174;font-size:11px;font-weight:900;letter-spacing:.2px;}
+.ske-status-nav-hint{font-size:9.5px;font-weight:700;color:#A0A8B4;}
+.ske-status-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:2px 0 8px;margin:0 0 10px;}
+.ske-status-nav-btn{--status-color:#168ED9;--status-bg:#EFF8FF;--status-border:#B9E4F7;position:relative;min-width:0;min-height:79px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px 4px 7px;border:1px solid var(--status-border);border-radius:14px;background:#fff;color:var(--status-color);box-shadow:0 3px 12px rgba(15,23,42,.05);cursor:pointer;text-align:center;transition:transform .16s ease,box-shadow .16s ease,background .16s ease;}
+.ske-status-nav-btn:active{transform:scale(.97);background:var(--status-bg);}
+.ske-status-nav-icon{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--status-bg);font-size:16px;}
+.ske-status-nav-name{width:100%;min-height:25px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9.5px;line-height:1.25;font-weight:900;}
+.ske-status-nav-count{position:absolute;top:5px;right:5px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:var(--status-bg);border:1px solid var(--status-border);font-size:9px;font-weight:950;}
+.ske-status-board-title{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#475569;font-size:11.5px;font-weight:900;letter-spacing:.3px;margin:3px 2px 9px;}
+.ske-status-board-title span:last-child{font-size:9.5px;color:#A0A8B4;font-weight:700;}
+.ske-status-section{--status-color:#168ED9;--status-bg:#EFF8FF;--status-border:#B9E4F7;position:relative;background:#fff;border-radius:18px;padding:13px 13px 12px;margin-bottom:12px;box-shadow:0 8px 24px rgba(15,23,42,.07);border:1px solid #E7EDF5;scroll-margin-top:84px;transition:box-shadow .2s ease,transform .2s ease;}
+.ske-status-section-head{display:flex;align-items:center;gap:10px;padding-bottom:9px;border-bottom:1px solid #EDF1F6;}
+.ske-status-icon-tile{width:38px;height:38px;flex:0 0 38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--status-bg);color:var(--status-color);font-size:20px;box-shadow:inset 0 0 0 1px var(--status-border);}
+.ske-status-heading{flex:1;min-width:0;}
+.ske-status-heading-title{font-size:14px;line-height:1.2;font-weight:950;color:var(--status-color);}
+.ske-status-heading-sub{font-size:9.5px;line-height:1.35;font-weight:650;color:#98A1AE;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ske-status-count-pill{flex:0 0 auto;display:flex;align-items:center;justify-content:center;min-width:48px;height:29px;padding:0 10px;border-radius:999px;background:var(--status-bg);border:1px solid var(--status-border);color:var(--status-color);font-size:12px;font-weight:950;cursor:pointer;}
+.ske-status-body{display:flex;flex-direction:column;gap:8px;padding-top:9px;}
+.ske-status-group{display:flex;flex-direction:column;gap:5px;}
+.ske-status-place{display:flex;align-items:center;gap:5px;color:var(--status-color);font-size:11px;font-weight:900;padding:0 2px;}
+.ske-status-place-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ske-status-place-count{min-width:21px;height:19px;padding:0 6px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:var(--status-bg);color:var(--status-color);font-size:9.5px;font-weight:950;}
+.ske-status-list{display:flex;flex-direction:column;gap:5px;}
+.ske-status-person{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr) auto;align-items:start;gap:9px;padding:8px 8px 8px 10px;background:#F8FAFC;border-radius:12px;border:1px solid #EEF2F6;overflow:hidden;}
+.ske-status-person::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--status-color);opacity:.78;}
+.ske-status-person-main{min-width:0;}
+.ske-status-avatar{position:relative;width:34px!important;height:34px!important;min-width:34px!important;font-size:14px!important;border-radius:11px!important;background:var(--status-bg)!important;color:var(--status-color)!important;box-shadow:none!important;overflow:visible!important;}
+.ske-status-avatar img{width:34px!important;height:34px!important;border-radius:11px!important;}
+.ske-status-queue{position:absolute;right:-5px;bottom:-5px;min-width:17px;height:17px;padding:0 3px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:var(--status-color);color:#fff;border:2px solid #fff;font-size:8.5px;font-weight:950;}
+.ske-status-person-name{font-size:12px;font-weight:900;line-height:1.25;color:#253245;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ske-status-person-meta,.ske-status-person-note{font-size:10px;line-height:1.4;color:#7B8797;margin-top:2px;white-space:normal;word-break:break-word;}
+.ske-status-person-note{color:#59677A;}
+.ske-status-person-time{display:flex;align-items:center;gap:3px;color:#9AA4B2;font-size:9.5px;line-height:1.2;font-weight:700;white-space:nowrap;padding-top:1px;}
+.ske-status-person-time svg{font-size:11px;}
+@keyframes skeStatusJumpFlash{
+  0%{transform:translateY(0);box-shadow:0 8px 24px rgba(15,23,42,.07),0 0 0 0 var(--status-border)}
+  32%{transform:translateY(-2px);box-shadow:0 14px 32px rgba(15,23,42,.13),0 0 0 5px var(--status-border)}
+  100%{transform:translateY(0);box-shadow:0 8px 24px rgba(15,23,42,.07),0 0 0 0 var(--status-border)}
+}
+.ske-status-section.status-jump-flash{animation:skeStatusJumpFlash 1.35s ease both;}
+@media (max-width:390px){
+  .ske-status-section{border-radius:16px;padding:11px 10px;}
+  .ske-status-nav{gap:6px;}
+  .ske-status-nav-btn{min-height:74px;padding:7px 3px 6px;border-radius:12px;}
+  .ske-status-nav-name{font-size:9px;}
+  .ske-status-heading-title{font-size:13px;}
+  .ske-status-heading-sub{font-size:9px;}
+  .ske-status-person{grid-template-columns:33px minmax(0,1fr) auto;gap:7px;padding-right:6px;}
+  .ske-status-avatar,.ske-status-avatar img{width:31px!important;height:31px!important;min-width:31px!important;}
+  .ske-status-person-name{font-size:11.5px;}
+  .ske-status-person-meta,.ske-status-person-note{font-size:9.5px;}
+  .ske-status-person-time{font-size:9px;}
+}
+
 </style>
 </head>
 
@@ -2729,7 +2799,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.13T</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.14T</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2737,7 +2807,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v3.2.13T</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v3.2.14T</div>
       </div>
     </div>
 
@@ -2855,7 +2925,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.13T</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.14T</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -3111,7 +3181,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v3.2.13T</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v3.2.14T</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3526,16 +3596,16 @@ function skeIcon(name){const p=SKE_ICONS[name];return p?('<svg viewBox="0 0 24 2
 window.skeIcon = skeIcon;
 
 const STATUSES=[
-  {id:"loading_bay",label:"เข้าช่องขึ้นงานแล้ว",ic:"bayin",    emoji:"🟢",color:"#15803D",bg:"#F0FDF4",border:"#86EFAC"},
-  {id:"unload_bay", label:"ถึงแล้วรอลงงาน",  ic:"arrived",  emoji:"🔵",color:"#1D4ED8",bg:"#EFF6FF",border:"#93C5FD"},
-  {id:"loading",    label:"กำลังขึ้นงาน",         ic:"boxup",    emoji:"🟡",color:"#92400E",bg:"#FFFBEB",border:"#FCD34D"},
-  {id:"unloading",  label:"กำลังลงงาน",           ic:"boxdown",  emoji:"🟠",color:"#C2410C",bg:"#FFF7ED",border:"#FCA5A5"},
-  {id:"traveling",  label:"ออกเดินทาง",           ic:"truck",    emoji:"🚛",color:"#0E7490",bg:"#ECFEFF",border:"#67E8F9"},
-  {id:"returning",  label:"กำลังไหลกลับ",         ic:"returning",emoji:"🔁",color:"#0F766E",bg:"#F0FDFA",border:"#5EEAD4"},
-  {id:"standby",    label:"สแตนบายรอขึ้นงาน",      ic:"hourglass",emoji:"⏳",color:"#6D28D9",bg:"#F5F3FF",border:"#C4B5FD"},
-  {id:"got_job",    label:"ได้งานแล้ว",            ic:"box",      emoji:"📦",color:"#4F46E5",bg:"#EEF2FF",border:"#A5B4FC"},
-  {id:"repairing",  label:"กำลังซ่อมรถอยู่",       ic:"wrench",   emoji:"🔧",color:"#B91C1C",bg:"#FEF2F2",border:"#FCA5A5"},
-  {id:"done",       label:"สแตนบายว่างงาน",        ic:"idle",     emoji:"✅",color:"#065F46",bg:"#ECFDF5",border:"#6EE7B7"},
+  {id:"loading_bay",label:"เข้าช่องขึ้นงานแล้ว",sub:"รถเข้าช่องและพร้อมขึ้นสินค้า",ic:"bayin",emoji:"🟢",color:"#15803D",bg:"#F0FDF4",border:"#86EFAC"},
+  {id:"unload_bay", label:"ถึงแล้วรอลงงาน",sub:"รถถึงจุดส่งและรอเข้าช่อง",ic:"arrived",emoji:"🔵",color:"#1D4ED8",bg:"#EFF6FF",border:"#93C5FD"},
+  {id:"loading",    label:"กำลังขึ้นงาน",sub:"กำลังรับสินค้าและเตรียมเดินทาง",ic:"boxup",emoji:"🟡",color:"#92400E",bg:"#FFFBEB",border:"#FCD34D"},
+  {id:"unloading",  label:"กำลังลงงาน",sub:"รถถึงจุดส่งและกำลังปฏิบัติงาน",ic:"boxdown",emoji:"🟠",color:"#C2410C",bg:"#FFF7ED",border:"#FCA5A5"},
+  {id:"traveling",  label:"ออกเดินทาง",sub:"กำลังมุ่งหน้าไปยังปลายทาง",ic:"truck",emoji:"🚛",color:"#0E7490",bg:"#ECFEFF",border:"#67E8F9"},
+  {id:"returning",  label:"กำลังไหลกลับ",sub:"กำลังเดินทางกลับหรือรอถึงจุดพัก",ic:"returning",emoji:"🔁",color:"#0F766E",bg:"#F0FDFA",border:"#5EEAD4"},
+  {id:"standby",    label:"สแตนบายรอขึ้นงาน",sub:"อยู่ระหว่างรอเข้าช่องขึ้นสินค้า",ic:"hourglass",emoji:"⏳",color:"#6D28D9",bg:"#F5F3FF",border:"#C4B5FD"},
+  {id:"got_job",    label:"ได้งานแล้ว",sub:"รับงานแล้ว รอถึงเวลาออกเดินทาง",ic:"box",emoji:"📦",color:"#4F46E5",bg:"#EEF2FF",border:"#A5B4FC"},
+  {id:"repairing",  label:"กำลังซ่อมรถอยู่",sub:"รถอยู่ระหว่างตรวจเช็กหรือซ่อมบำรุง",ic:"wrench",emoji:"🔧",color:"#B91C1C",bg:"#FEF2F2",border:"#FCA5A5"},
+  {id:"done",       label:"สแตนบายว่างงาน",sub:"พร้อมรับงานใหม่",ic:"idle",emoji:"✅",color:"#065F46",bg:"#ECFDF5",border:"#6EE7B7"},
 ];
 // "จบงาน" เป็นคำสั่งเปลี่ยนผ่านสำหรับหน้าพนักงาน ไม่ใช่สถานะที่บันทึกค้างในฐานข้อมูล:
 // เมื่อกดแล้ว ระบบจะเลื่อนงาน queued เป็น got_job หรือเปลี่ยนเป็น done หากไม่มีงานถัดไป
@@ -3743,7 +3813,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v3.2.13T';
+const SKE_APP_VERSION='v3.2.14T';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -4252,7 +4322,7 @@ let _swReg = null;
 if ('serviceWorker' in navigator &&
     (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js?v=trial-latest-v3213t', { updateViaCache: 'none' }).then(reg => {
+    navigator.serviceWorker.register('sw.js?v=trial-latest-v3214t', { updateViaCache: 'none' }).then(reg => {
       _swReg = reg;
       // บังคับตรวจไฟล์ worker จากเครือข่าย ไม่ใช้สำเนาเก่าจาก HTTP cache
       reg.update().catch(() => {});
@@ -7234,6 +7304,17 @@ function doCancelLeave(){
 }
 
 
+function jumpToStatus(statusId){
+  const target=document.getElementById('admin-status-'+statusId);
+  if(!target)return;
+  target.scrollIntoView({behavior:'smooth',block:'start'});
+  target.classList.remove('status-jump-flash');
+  void target.offsetWidth;
+  target.classList.add('status-jump-flash');
+  clearTimeout(window._statusJumpTimer);
+  window._statusJumpTimer=setTimeout(()=>target.classList.remove('status-jump-flash'),1500);
+}
+
 function buildSummaryHTML(){
   if(!employees.length){
     return '<div class="empty-state"><div class="empty-icon">'+skeIcon('overview')+'</div><div class="empty-text">ยังไม่มีข้อมูลพนักงาน</div></div>';
@@ -7244,7 +7325,13 @@ function buildSummaryHTML(){
   const dedupedEmployees=_dedupByPlate(employees);
   const counts={};
   STATUSES.forEach(st=>counts[st.id]=0);
-  dedupedEmployees.forEach(e=>{if(isLeaveActiveToday(e)||e.status==='inactive')return;if(counts[e.status]!==undefined)counts[e.status]++;else counts['standby']++;});
+  dedupedEmployees.forEach(e=>{
+    if(isLeaveActiveToday(e)||e.status==='inactive')return;
+    const statusId=counts[e.status]!==undefined?e.status:'standby';
+    // ให้ตัวเลขตรงกับรายการที่แสดงจริง: รถร่วมที่มีงานย้อนหลังค้างจะไม่ถูกนับใน "ได้งานแล้ว"
+    if(statusId==='got_job'&&e.position==='รถร่วม'&&e.jobWorkDate&&isPastWorkDate(e.jobWorkDate))return;
+    counts[statusId]++;
+  });
 
   // สรุปบนสุด — "รถทั้งหมด" นับจากรายการรถจริง (vehicles) ตรงๆ แยกขาดจากพนักงาน/คนขับโดยสิ้นเชิง
   // แจ้งเตือนเฉพาะสถานะที่กำลังทำงานอยู่ที่ช่อง (4 สถานะ) เกิน ALERT_HOURS ชม.
@@ -7252,23 +7339,32 @@ function buildSummaryHTML(){
   const stale=dedupedEmployees.filter(e=>!isLeaveActiveToday(e)&&ALERT_STATUSES.includes(e.status)&&(!e.updatedAt||(Date.now()-new Date(e.updatedAt))/3600000>=ALERT_HOURS)).length;
 
   let html=`
-  <div style="text-align:center;margin-bottom:10px;padding:8px 14px;background:linear-gradient(135deg,#6C3FE8,#1E90D6);border-radius:12px;box-shadow:0 2px 8px rgba(108,63,232,.25);">
-    <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:0.5px;">${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' / ')}</div>
-    <div style="font-size:10.5px;color:rgba(255,255,255,.75);margin-top:1px;">${new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+  <div class="ske-summary-date">
+    <div class="ske-summary-date-main">${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' / ')}</div>
+    <div class="ske-summary-date-sub">${new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-    <div style="background:#fff;border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1.5px solid #E8EAF0;">
-      <div style="font-size:28px;font-weight:900;color:#1E90D6;">${total}</div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">🚛 รถทั้งหมด</div>
+  <div class="ske-summary-metrics">
+    <div class="ske-summary-metric">
+      <div class="ske-summary-metric-value">${total}</div>
+      <div class="ske-summary-metric-label">${skeIcon('truck')} รถทั้งหมด</div>
     </div>
-    <div style="background:${stale>0?'#FFF5F5':'#F0FDF4'};border-radius:14px;padding:12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1.5px solid ${stale>0?'#FCA5A5':'#86EFAC'};">
-      <div style="font-size:28px;font-weight:900;color:${stale>0?'#EF4444':'#10B981'};">${stale}</div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">${stale>0?skeIcon('alert')+' ยังไม่อัพเดท':skeIcon('check')+' อัพเดทครบ'}</div>
+    <div class="ske-summary-metric ${stale>0?'warn':'ok'}">
+      <div class="ske-summary-metric-value">${stale}</div>
+      <div class="ske-summary-metric-label">${stale>0?skeIcon('alert')+' ยังไม่อัพเดท':skeIcon('check')+' อัพเดทครบ'}</div>
     </div>
   </div>
-  <div style="background:#fff;border:1.5px solid #BFDBFE;border-radius:14px;padding:10px 12px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);">
-    <input id="adminQuickSearch" type="text" placeholder="🔍 ค้นหาชื่อ / ทะเบียนรถ แล้วกดรายการเพื่อเลื่อนไปหา" oninput="renderAdminQuickSearch()" style="width:100%;padding:11px 12px;border:2px solid #1E90D6;border-radius:12px;font-size:13.5px;box-sizing:border-box;outline:none;">
+  <div class="ske-summary-search">
+    <input id="adminQuickSearch" type="text" placeholder="🔍 ค้นหาชื่อ / ทะเบียนรถ แล้วกดรายการเพื่อเลื่อนไปหา" oninput="renderAdminQuickSearch()">
     <div id="adminQuickSearchResults" style="display:none;margin-top:8px;flex-direction:column;gap:6px;"></div>
+  </div>
+  <div class="ske-status-nav-label"><span>สถานะรถแบบเรียลไทม์</span><span class="ske-status-nav-hint">แตะตัวเลขเพื่อเลื่อนไปหา</span></div>
+  <div class="ske-status-nav" aria-label="ปุ่มลัดสรุปสถานะรถ">
+    ${STATUSES.filter(st=>(counts[st.id]||0)>0).map(st=>`
+      <button type="button" class="ske-status-nav-btn" style="--status-color:${st.color};--status-bg:${st.bg};--status-border:${st.border};" onclick="jumpToStatus('${st.id}')" aria-label="ไปยังสถานะ ${esc(st.label)} ${counts[st.id]} คัน">
+        <span class="ske-status-nav-icon">${skeIcon(st.ic)}</span>
+        <span class="ske-status-nav-name">${esc(st.label)}</span>
+        <span class="ske-status-nav-count">${counts[st.id]}</span>
+      </button>`).join('')}
   </div>`;
 
   // รายชื่อพนักงานที่ยังไม่อัพเดทเกิน 24 ชม. (ทุกสถานะ — แจ้งเตือนผู้ดูแลแบบภาพรวม)
@@ -7318,24 +7414,25 @@ function buildSummaryHTML(){
   }
 
   // สถานะแต่ละประเภท
-  html+=`<div style="color:#999;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px;">สรุปสถานะรถ</div>`;
+  html+=`<div class="ske-status-board-title"><span>สรุปสถานะรถ</span><span>ข้อมูลอัปเดตแบบเรียลไทม์</span></div>`;
   STATUSES.forEach(st=>{
     const cnt=counts[st.id]||0;
     if(cnt===0)return;
-    html+=`<div style="background:#fff;border-radius:12px;padding:11px 14px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.05);border:1.5px solid ${st.border};">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:22px;color:${st.color};">${skeIcon(st.ic)}</span>
-        <div style="flex:1;">
-          <div style="font-weight:700;color:${st.color};font-size:13px;">${st.label}</div>
+    html+=`<section id="admin-status-${st.id}" class="ske-status-section" style="--status-color:${st.color};--status-bg:${st.bg};--status-border:${st.border};" aria-labelledby="admin-status-title-${st.id}">
+      <div class="ske-status-section-head">
+        <span class="ske-status-icon-tile">${skeIcon(st.ic)}</span>
+        <div class="ske-status-heading">
+          <div id="admin-status-title-${st.id}" class="ske-status-heading-title">${esc(st.label)}</div>
+          <div class="ske-status-heading-sub">${esc(st.sub||'สถานะรถปัจจุบัน')}</div>
         </div>
-        <div style="background:${st.bg};border:1.5px solid ${st.border};border-radius:20px;padding:3px 12px;font-weight:800;color:${st.color};font-size:15px;">${cnt} คัน</div>
+        <button type="button" class="ske-status-count-pill" onclick="jumpToStatus('${st.id}')" aria-label="${esc(st.label)} ${cnt} คัน">${cnt} คัน</button>
       </div>
       ${st.id==='standby'?renderStandbyByProv():''}
       ${st.id==='traveling'?renderTravelingByProv():''}
       ${st.id==='returning'?renderReturningByProv():''}
       ${st.id==='done'?renderDoneByProv():''}
       ${(st.id!=='standby'&&st.id!=='traveling'&&st.id!=='returning'&&st.id!=='done')?renderStatusEmployeeList(st):''}
-    </div>`;
+    </section>`;
   });
 
   // ── พนักงานที่ลาอยู่วันนี้ — แยกไว้ด้านล่างสุด เป็นสัดส่วนของตัวเอง ไม่ปนกับสถานะรถปกติ ──
@@ -7454,67 +7551,76 @@ function updateLeaveBadge(){
   [badge,navBadge,moreBadge].forEach(b=>{if(!b)return;if(n>0){b.textContent=n;b.classList.remove('hidden');}else b.classList.add('hidden');});
 }
 
-// รายชื่อพนักงานแบบเรียบ (ไม่จัดกลุ่มจังหวัด) ใช้กับสถานะอื่นๆ ที่ไม่ใช่ standby/traveling
+function statusTimeShort(value){
+  if(!value)return'ไม่ระบุ';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return'ไม่ระบุ';
+  return date.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+
+function renderStatusPersonRow(e,st,options={}){
+  const queue=Number(options.queue||0);
+  const timeValue=options.timeValue||e.updatedAt;
+  return `<div class="ske-status-person">
+    <div class="avatar ske-status-avatar">${avatarImg(e,34)}${queue?`<span class="ske-status-queue" title="คิวที่ ${queue}">${queue}</span>`:''}</div>
+    <div class="ske-status-person-main">
+      <div class="ske-status-person-name">${esc(e.name||'-')}</div>
+      <div class="ske-status-person-meta">${skeIcon('truck')} ${esc(e.plate||'-')}${phoneLink(e.phone)}${lineLink(e.lineId)}</div>
+      ${leaveTodayBadge(e)}
+      ${e.note?`<div class="ske-status-person-note">${skeIcon('note')} ${esc(e.note)}</div>`:''}
+    </div>
+    <div class="ske-status-person-time">${skeIcon('history')} ${statusTimeShort(timeValue)}</div>
+  </div>`;
+}
+
+function renderStatusGroupedByProvince(st,options={}){
+  const getTime=options.getTime||((e)=>e.updatedAt||'');
+  const defaultProvince=options.defaultProvince||'ไม่ระบุจังหวัด';
+  const list=_dedupByPlate(employees).filter(e=>e.status===st.id&&!isLeaveActiveToday(e));
+  if(!list.length)return'';
+  const byProv={};
+  list.forEach(e=>{
+    const province=e.province||defaultProvince;
+    if(!byProv[province])byProv[province]=[];
+    byProv[province].push(e);
+  });
+  Object.values(byProv).forEach(group=>group.sort((a,b)=>getTime(a)>getTime(b)?1:-1));
+  const groups=Object.entries(byProv).sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0],'th'));
+  return `<div class="ske-status-body">${groups.map(([province,group])=>`
+    <div class="ske-status-group">
+      <div class="ske-status-place">
+        ${skeIcon('pin')}
+        <span class="ske-status-place-name">${esc(province)}</span>
+        <span class="ske-status-place-count">${group.length}</span>
+      </div>
+      <div class="ske-status-list">
+        ${group.map((e,index)=>renderStatusPersonRow(e,st,{
+          queue:options.showQueue?index+1:0,
+          timeValue:getTime(e)
+        })).join('')}
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+// รายชื่อพนักงานแบบเรียบ ใช้กับสถานะที่ไม่ต้องจัดกลุ่มจังหวัด
 function renderStatusEmployeeList(st){
   const list=_dedupByPlate(employees).filter(e=>{
     if(e.status!==st.id||isLeaveActiveToday(e))return false;
-    // รถร่วมในสถานะ "ได้งานแล้ว" ต้องแสดงทันทีทั้งงานวันนี้และงานอนาคต เพื่อให้ส่วนกลางรู้ว่ารถคันนี้มีงานแล้ว
+    // รถร่วมในสถานะ "ได้งานแล้ว" ต้องแสดงทันทีทั้งงานวันนี้และงานอนาคต
     // ซ่อนเฉพาะงานย้อนหลังที่ค้างอยู่ เพราะรถร่วมไม่ได้ใช้แอปเองและอาจไม่มีผู้กดจบงาน
-    // (ไม่แตะ/ไม่เปลี่ยนสถานะจริงในฐานข้อมูล แค่ไม่นำงานย้อนหลังมาแสดงในลิสต์นี้)
     if(st.id==='got_job'&&e.position==='รถร่วม'&&e.jobWorkDate&&isPastWorkDate(e.jobWorkDate))return false;
     return true;
   });
   if(!list.length)return'';
   list.sort((a,b)=>(b.updatedAt||'')>(a.updatedAt||'')?1:-1);
-  let html=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid #E8EAF0;display:flex;flex-direction:column;gap:6px;">`;
-  list.forEach(e=>{
-    const t=e.updatedAt;
-    const timeStr=t?fmt(t):'ไม่ระบุ';
-    html+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:${st.bg};border-radius:7px;border:1.5px solid ${st.border};">
-      <span style="font-size:14px;color:${st.color};">${skeIcon(st.ic)}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:${st.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.name)}</div>
-        <div style="font-size:11px;color:#888;">🚘 ${esc(e.plate||'-')}${phoneLink(e.phone)}${lineLink(e.lineId)}</div>
-        ${leaveTodayBadge(e)}${e.note?`<div style="font-size:11px;color:${st.color};margin-top:1px;">${skeIcon('note')} ${esc(e.note)}</div>`:''}
-      </div>
-      <span style="font-size:10px;color:#888;white-space:nowrap;">🕐 ${timeStr}</span>
-    </div>`;
-  });
-  html+='</div>';
-  return html;
+  return `<div class="ske-status-body"><div class="ske-status-list">${list.map(e=>renderStatusPersonRow(e,st)).join('')}</div></div>`;
 }
 
 function renderStandbyByProv(){
-  const standby=_dedupByPlate(employees).filter(e=>e.status==='standby'&&!isLeaveActiveToday(e));
-  if(!standby.length)return'';
-  const byProv={};
-  standby.forEach(e=>{const p=e.province||'ไม่ระบุจังหวัด';if(!byProv[p])byProv[p]=[];byProv[p].push(e);});
-  // เรียงตามเวลาแสตนบาย (เก่าสุดก่อน = ลำดับคิวต้น)
-  Object.values(byProv).forEach(list=>list.sort((a,b)=>(a.standbyAt||a.updatedAt||'')>(b.standbyAt||b.updatedAt||'')?1:-1));
-  const sorted=Object.entries(byProv).sort((a,b)=>b[1].length-a[1].length);
-  let html='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #E8EAF0;display:flex;flex-direction:column;gap:6px;">';
-  sorted.forEach(([prov,list])=>{
-    html+=`<div style="margin-bottom:4px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="color:#6D28D9;font-size:12px;font-weight:700;">${skeIcon('pin')} ${prov}</span>
-        <span style="background:#F5F3FF;color:#7B2FBE;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">${list.length} คัน</span>
-      </div>`;
-    list.forEach((e,i)=>{
-      const t=e.standbyAt||e.updatedAt;
-      const timeStr=t?fmt(t):'ไม่ระบุ';
-      html+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:${i===0?'#F5F3FF':'#fafafa'};border-radius:7px;border:1.5px solid ${i===0?'#C4B5FD':'#E8EAF0'};">
-        <span style="font-size:11px;font-weight:800;color:${i===0?'#7B2FBE':'#aaa'};min-width:16px;padding-top:1px;">#${i+1}</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;color:#333;font-weight:${i===0?'700':'400'};">${esc(e.name)} · ${esc(e.plate||'-')}${phoneLink(e.phone)}${lineLink(e.lineId)}</div>
-          ${leaveTodayBadge(e)}${e.note?`<div style="font-size:11px;color:#7B2FBE;margin-top:1px;">${skeIcon('note')} ${esc(e.note)}</div>`:''}
-        </div>
-        <span style="font-size:10px;color:#888;white-space:nowrap;padding-top:1px;">⏱️ ${timeStr}</span>
-      </div>`;
-    });
-    html+='</div>';
+  return renderStatusGroupedByProvince(getS('standby'),{
+    getTime:e=>e.standbyAt||e.updatedAt||'',
+    showQueue:true
   });
-  html+='</div>';
-  return html;
 }
 
 
@@ -7963,107 +8069,24 @@ function renderSysInfo(){
 }
 
 function renderTravelingByProv(){
-  const traveling=_dedupByPlate(employees).filter(e=>e.status==='traveling'&&!isLeaveActiveToday(e));
-  if(!traveling.length)return'';
-  const byProv={};
-  traveling.forEach(e=>{const p=e.province||'ไม่ระบุปลายทาง';if(!byProv[p])byProv[p]=[];byProv[p].push(e);});
-  // เรียงตามเวลาออกเดินทาง
-  Object.values(byProv).forEach(list=>list.sort((a,b)=>(a.updatedAt||'')>(b.updatedAt||'')?1:-1));
-  const sorted=Object.entries(byProv).sort((a,b)=>b[1].length-a[1].length);
-  let html='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #E8EAF0;display:flex;flex-direction:column;gap:6px;">';
-  sorted.forEach(([prov,list])=>{
-    html+=`<div style="margin-bottom:4px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="color:#0E7490;font-size:12px;font-weight:700;">🏁 ${prov}</span>
-        <span style="background:#ECFEFF;color:#0E7490;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">${list.length} คัน</span>
-      </div>`;
-    list.forEach(e=>{
-      const t=e.updatedAt;
-      const timeStr=t?fmt(t):'ไม่ระบุ';
-      html+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:#F0FDFE;border-radius:7px;border:1px solid #A5F3FC;">
-        <span style="font-size:14px;">🚛</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:700;color:#0E7490;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.name)}</div>
-          <div style="font-size:11px;color:#888;">🚘 ${esc(e.plate||'-')}${phoneLink(e.phone)}${lineLink(e.lineId)}</div>
-          ${leaveTodayBadge(e)}${e.note?`<div style="font-size:11px;color:#0E7490;margin-top:1px;">${skeIcon('note')} ${esc(e.note)}</div>`:''}
-        </div>
-        <span style="font-size:10px;color:#888;white-space:nowrap;">🕐 ${timeStr}</span>
-      </div>`;
-    });
-    html+='</div>';
+  return renderStatusGroupedByProvince(getS('traveling'),{
+    defaultProvince:'ไม่ระบุปลายทาง',
+    getTime:e=>e.updatedAt||''
   });
-  html+='</div>';
-  return html;
 }
 
 function renderReturningByProv(){
-  const returning=_dedupByPlate(employees).filter(e=>e.status==='returning'&&!isLeaveActiveToday(e));
-  if(!returning.length)return'';
-  const byProv={};
-  returning.forEach(e=>{const p=e.province||'ไม่ระบุจังหวัด';if(!byProv[p])byProv[p]=[];byProv[p].push(e);});
-  // เรียงตามเวลาที่เริ่มไหลกลับ
-  Object.values(byProv).forEach(list=>list.sort((a,b)=>(a.updatedAt||'')>(b.updatedAt||'')?1:-1));
-  const sorted=Object.entries(byProv).sort((a,b)=>b[1].length-a[1].length);
-  let html='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #E8EAF0;display:flex;flex-direction:column;gap:6px;">';
-  sorted.forEach(([prov,list])=>{
-    html+=`<div style="margin-bottom:4px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="color:#0F766E;font-size:12px;font-weight:700;">🔁 ${esc(prov)}</span>
-        <span style="background:#F0FDFA;color:#0F766E;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">${list.length} คัน</span>
-      </div>`;
-    list.forEach(e=>{
-      const t=e.updatedAt;
-      const timeStr=t?fmt(t):'ไม่ระบุ';
-      html+=`<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 8px;background:#F0FDFA;border-radius:7px;border:1px solid #5EEAD4;">
-        <span style="font-size:14px;">🚛</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:700;color:#0F766E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.name)}</div>
-          <div style="font-size:11px;color:#888;">🚘 ${esc(e.plate||'-')}${phoneLink(e.phone)}${lineLink(e.lineId)}</div>
-          ${leaveTodayBadge(e)}${e.note?`<div style="font-size:11px;color:#0F766E;margin-top:1px;">${skeIcon('note')} ${esc(e.note)}</div>`:''}
-        </div>
-        <span style="font-size:10px;color:#888;white-space:nowrap;">🕐 ${timeStr}</span>
-      </div>`;
-    });
-    html+='</div>';
+  return renderStatusGroupedByProvince(getS('returning'),{
+    getTime:e=>e.updatedAt||''
   });
-  html+='</div>';
-  return html;
 }
 
 function renderDoneByProv(){
-  const done=_dedupByPlate(employees).filter(e=>e.status==='done'&&!isLeaveActiveToday(e));
-  if(!done.length)return'';
-  const byProv={};
-  done.forEach(e=>{const p=e.province||'ไม่ระบุจังหวัด';if(!byProv[p])byProv[p]=[];byProv[p].push(e);});
-  // รันคิวตามเวลาที่เริ่มว่างงาน (updatedAt) จากนานสุด→ใหม่สุด — ใครว่างงานนานสุดคือคิวที่ 1 (คิวต่อไปที่ควรได้งานก่อน)
-  // ลำดับนี้จะ "คงที่" จนกว่าคนนั้นจะเปลี่ยนสถานะไปจากว่างงานจริงๆ เพราะอิงจาก updatedAt ที่ไม่ขยับถ้าไม่มีการบันทึกสถานะใหม่
-  Object.values(byProv).forEach(list=>list.sort((a,b)=>(a.updatedAt||'')>(b.updatedAt||'')?1:-1));
-  const sorted=Object.entries(byProv).sort((a,b)=>b[1].length-a[1].length);
-  let html='<div style="margin-top:8px;padding-top:8px;border-top:1px solid #E8EAF0;display:flex;flex-direction:column;gap:6px;">';
-  sorted.forEach(([prov,list])=>{
-    html+=`<div style="margin-bottom:4px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="color:#065F46;font-size:12px;font-weight:700;">${skeIcon('pin')} ${esc(prov)}</span>
-        <span style="background:#ECFDF5;color:#065F46;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700;">${list.length} คัน</span>
-      </div>`;
-    list.forEach((e,idx)=>{
-      const t=e.updatedAt;
-      const timeStr=t?fmt(t):'ไม่ระบุ';
-      const q=idx+1;
-      html+=`<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 8px;background:#F0FDF4;border-radius:7px;border:1px solid #6EE7B7;">
-        <span title="คิวที่ ${q}" style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#065F46;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;">${q}</span>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:700;color:#065F46;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.name)}</div>
-          <div style="font-size:11px;color:#888;">🚘 ${esc(e.plate||'-')}${phoneLink(e.phone)}${lineLink(e.lineId)}</div>
-          ${leaveTodayBadge(e)}${e.note?`<div style="font-size:11px;color:#065F46;margin-top:1px;">${skeIcon('note')} ${esc(e.note)}</div>`:''}
-        </div>
-        <span style="font-size:10px;color:#888;white-space:nowrap;">🕐 ${timeStr}</span>
-      </div>`;
-    });
-    html+='</div>';
+  // ใครเริ่มว่างงานก่อนเป็นคิวต้น และแสดงเลขคิวซ้อนบนรูปพนักงาน
+  return renderStatusGroupedByProvince(getS('done'),{
+    getTime:e=>e.updatedAt||'',
+    showQueue:true
   });
-  html+='</div>';
-  return html;
 }
 
 
