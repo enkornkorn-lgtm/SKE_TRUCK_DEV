@@ -2,8 +2,6 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="author" content="SKE TRUCK">
-<meta name="copyright" content="© 2026 SKE TRUCK. All rights reserved.">
 <!-- ══ Content-Security-Policy ══
      กันไม่ให้โหลดสคริปต์/เชื่อมต่อโดเมนที่ไม่ได้อนุญาตไว้
      หมายเหตุ: สถาปัตยกรรมเดิมยังต้องใช้ 'unsafe-inline' สำหรับ onclick/style แบบ inline
@@ -44,7 +42,7 @@
 <meta name="apple-mobile-web-app-title" content="TRUCK TEST">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<link rel="manifest" href="manifest.json?v=trial-firebase-v1-test-logo">
+<link rel="manifest" href="manifest.json?v=trial-latest-v3213t">
 <title>TRUCK TEST — Firebase Trial</title>
 <!-- Firebase SDK -->
 <script type="module">
@@ -63,10 +61,9 @@
     appId: "1:314092602910:web:67a73245abd287c2ddd00f"
   };
 
-  // ── FIREBASE APP CHECK (reCAPTCHA Enterprise) ────────────────────────────
-  // ใช้โปรเจกต์ทดลองนี้ทดสอบก่อนตัวหลัก เมื่อสร้างและลงทะเบียน key แล้ว
-  // ให้วาง Site Key แทนข้อความ PASTE_... ด้านล่าง
-  // ตราบใดที่ยังเป็น PASTE_... แอพจะทำงานเหมือนเดิมและยังไม่ส่ง App Check token
+  // ── FIREBASE APP CHECK (reCAPTCHA v3) ────────────────────────────────────
+  // Site Key นี้อนุญาตโดเมน GitHub Pages ของแอพ และลงทะเบียนกับ Firebase
+  // โปรเจกต์ ske-truck-dev แล้ว เปิด Enforcement หลังตรวจพบ Verified requests
   const APP_CHECK_SITE_KEY = "6LeoHGgtAAAAAHnPhBQLViVYNNb5HhQ7IOOEUqTm";
   const APP_CHECK_CONFIGURED =
     APP_CHECK_SITE_KEY.length > 0 && !APP_CHECK_SITE_KEY.startsWith('PASTE_');
@@ -97,12 +94,12 @@
         provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
         isTokenAutoRefreshEnabled: true
       });
-      console.info('[SKE App Check] เปิดใช้งาน reCAPTCHA Enterprise แล้ว');
+      console.info('[SKE App Check] เปิดใช้งาน reCAPTCHA v3 แล้ว');
     } catch (error) {
       console.error('[SKE App Check] เริ่มทำงานไม่สำเร็จ', error);
     }
   } else {
-    console.info('[SKE App Check] รอใส่ reCAPTCHA Enterprise Site Key');
+    console.info('[SKE App Check] รอใส่ reCAPTCHA v3 Site Key');
   }
   window._skeAppCheckStatus = {
     configured: APP_CHECK_CONFIGURED,
@@ -469,8 +466,8 @@
   })();
 
 
-  // VAPID key ของโปรเจกต์ทดลอง — ใส่ภายหลังเมื่อต้องการเปิด Push Notification
-  const VAPID_KEY = "PASTE_YOUR_VAPID_KEY_HERE";
+  // ✅ VAPID key ของโปรเจกต์ ske-truck-dev (ใส่แล้ว 16/07/2569)
+  const VAPID_KEY = "BP2BuLTCkxjZKw8o_Htq7jvlSIY2Uc0x6eMywhCEFirDmNGmXIPRTXhNfsVCG7RwnK3FWphgMn7eVdi9AQyjzFs";
   let _messaging = null;
 
   // ขอ permission + ลงทะเบียน FCM token ของเครื่องนี้ขึ้น Firebase
@@ -482,7 +479,7 @@
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await navigator.serviceWorker.register('sw.js?v=trial-firebase-v1-test-logo', { updateViaCache: 'none' });
+      const swReg = await navigator.serviceWorker.register('sw.js?v=trial-latest-v3213t', { updateViaCache: 'none' });
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -724,7 +721,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v2026.07.28-trial-v4-ske-logo-mark-app-check-v3');
+  console.log('[TRUCK TEST] app version: v3.2.13T');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -1955,40 +1952,136 @@ textarea{resize:none;}
 .screen{height:100%;height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden;}
 .hidden{display:none!important;}
 
-/* ── Splash ── */
-#splash{background:#fff;align-items:center;justify-content:center;gap:20px;}
-.splash-logo{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#F47920,#1E90D6,#7B2FBE);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(244,121,32,.35),0 4px 16px rgba(30,144,214,.2);}
-.splash-logo span{color:#fff;font-weight:900;font-size:34px;letter-spacing:-1px;}
-.splash-title{font-size:26px;font-weight:800;color:#1a1a2e;letter-spacing:1px;}
-.splash-sub{font-size:13px;color:#666;margin-top:4px;text-align:center;}
-.dots{display:flex;gap:6px;margin-top:12px;}
-.dot{width:8px;height:8px;border-radius:50%;animation:pulse 1.2s ease-in-out infinite;}
-.dot:nth-child(1){background:#F47920;}
-.dot:nth-child(2){background:#1E90D6;animation-delay:.2s;}
-.dot:nth-child(3){background:#7B2FBE;animation-delay:.4s;}
-@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
-
-/* ══ Premium video intro splash by ChatGPT ═════════════════════════════ */
-#splash.ske-intro-screen{
-  position:fixed;inset:0;z-index:99999;background:#fff;overflow:hidden;
-  display:flex!important;align-items:center;justify-content:center;color:#fff;
+/* ── SKE Premium Splash ─────────────────────────────────────────────────── */
+#splash{
+  position:fixed;inset:0;z-index:99999;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(255,111,0,.15),transparent 30%),
+    radial-gradient(circle at 82% 22%,rgba(0,174,255,.16),transparent 32%),
+    radial-gradient(circle at 50% 88%,rgba(132,39,255,.13),transparent 36%),
+    linear-gradient(145deg,#FFFFFF 0%,#F8FBFF 50%,#FFF9F4 100%);
+  overflow:hidden;
 }
-.ske-intro-video{position:absolute;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000;filter:saturate(1.08) contrast(1.04);} 
-.ske-intro-vignette{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.05),rgba(0,0,0,.12) 32%,rgba(0,0,0,.68) 100%);pointer-events:none;}
-.ske-intro-brand{position:absolute;left:50%;bottom:max(72px,calc(46px + env(safe-area-inset-bottom,0px)));transform:translateX(-50%) translateY(12px);width:min(78vw,360px);text-align:center;opacity:0;animation:skeBrandIn 1.05s ease-out 4.75s forwards;}
-.ske-intro-brand img{width:min(58vw,240px);height:auto;object-fit:contain;display:block;margin:0 auto 12px;filter:drop-shadow(0 0 18px rgba(30,144,214,.32)) drop-shadow(0 0 26px rgba(123,47,190,.24));}
-.ske-intro-title{font-size:clamp(22px,7vw,34px);font-weight:900;letter-spacing:-.4px;text-shadow:0 6px 28px rgba(0,0,0,.55);}
-.ske-intro-sub{margin-top:4px;font-size:clamp(11px,3.2vw,15px);font-weight:800;letter-spacing:2.4px;color:rgba(255,255,255,.82);}
-
-.ske-intro-sound{position:absolute;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2;display:none;background:rgba(255,255,255,.92);color:#111827;border-radius:999px;padding:10px 16px;font-size:13px;font-weight:900;box-shadow:0 12px 28px rgba(0,0,0,.28);}
-#splash.ske-intro-fadeout{animation:skeIntroOut .55s ease-in forwards;}
-@keyframes skeBrandIn{to{opacity:1;transform:translateX(-50%) translateY(0)}}
-@keyframes skeIntroOut{to{opacity:0;visibility:hidden}}
-/* Final intro cleanup: video only, no logo/text/buttons */
-.ske-intro-brand,.ske-intro-sound,#skeIntroSkip,#splashInstallBtn{display:none!important;}
-#splash.ske-intro-screen{background:#fff!important;}
-
-@media (orientation:landscape){.ske-intro-brand{bottom:28px;width:min(48vw,320px)}.ske-intro-brand img{width:min(34vw,190px)}}
+#splash::before,#splash::after{
+  content:"";position:absolute;border-radius:50%;pointer-events:none;
+  filter:blur(3px);opacity:.72;
+}
+#splash::before{
+  width:min(82vw,520px);height:min(82vw,520px);left:-30%;top:-21%;
+  border:1px solid rgba(0,174,255,.20);
+  box-shadow:0 0 80px rgba(0,174,255,.10),inset 0 0 70px rgba(255,111,0,.06);
+  animation:skeSplashOrbit 8s linear infinite;
+}
+#splash::after{
+  width:min(72vw,460px);height:min(72vw,460px);right:-27%;bottom:-22%;
+  border:1px solid rgba(132,39,255,.18);
+  box-shadow:0 0 85px rgba(132,39,255,.10),inset 0 0 65px rgba(0,174,255,.06);
+  animation:skeSplashOrbit 10s linear infinite reverse;
+}
+.ske-splash-stage{
+  position:relative;z-index:2;width:min(86vw,390px);
+  display:flex;flex-direction:column;align-items:center;
+  animation:skeSplashStageIn .62s cubic-bezier(.2,.8,.2,1) both;
+}
+.ske-splash-logo-wrap{
+  position:relative;width:min(61vw,260px);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:8px;
+}
+.ske-splash-logo-wrap::before{
+  content:"";position:absolute;inset:4% -7%;border-radius:50%;
+  background:conic-gradient(from 90deg,rgba(255,111,0,.25),rgba(0,174,255,.25),rgba(132,39,255,.22),rgba(255,111,0,.25));
+  filter:blur(28px);opacity:.50;
+  animation:skeSplashAura 2.4s ease-in-out infinite;
+}
+.ske-splash-logo{
+  position:relative;width:100%;height:auto;display:block;
+  filter:drop-shadow(0 14px 24px rgba(18,56,120,.16));
+  animation:skeSplashLogoFloat 2.5s ease-in-out infinite;
+}
+.ske-splash-brand{
+  margin-top:2px;color:#17223B;font-size:clamp(13px,3.8vw,17px);
+  font-weight:950;letter-spacing:.22em;text-align:center;
+  text-shadow:0 2px 14px rgba(30,144,214,.12);
+}
+.ske-splash-caption{
+  margin-top:5px;color:#8992A6;font-size:10px;font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;
+}
+.ske-splash-loader{
+  width:min(76vw,318px);margin-top:30px;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.ske-splash-track{
+  position:relative;width:100%;height:14px;padding:3px;border-radius:999px;
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(83,102,153,.14);
+  box-shadow:0 10px 30px rgba(46,67,125,.12),inset 0 1px 2px rgba(255,255,255,.95);
+  overflow:visible;backdrop-filter:blur(9px);
+}
+.ske-splash-track-inner{
+  position:relative;width:100%;height:100%;border-radius:999px;
+  background:#E9EDF5;overflow:hidden;
+}
+.ske-splash-progress{
+  position:absolute;inset:0 auto 0 0;width:66%;border-radius:inherit;
+  background:linear-gradient(90deg,#FF7A18 0%,#FF3D7F 24%,#8647FF 47%,#168BFF 72%,#00D4FF 100%);
+  background-size:200% 100%;
+  box-shadow:0 0 16px rgba(75,94,255,.55);
+  animation:skeSplashFill 1.5s cubic-bezier(.45,0,.2,1) infinite alternate,
+            skeSplashGradient 2.1s linear infinite;
+}
+.ske-splash-progress::after{
+  content:"";position:absolute;inset:0;width:44%;left:-48%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.95),transparent);
+  transform:skewX(-24deg);
+  animation:skeSplashShine 1.15s ease-in-out infinite;
+}
+.ske-splash-truck{
+  position:absolute;z-index:3;left:0;top:50%;transform:translate(-24%,-52%);
+  width:31px;height:31px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.96);font-size:17px;
+  box-shadow:0 7px 20px rgba(30,55,112,.22),0 0 0 1px rgba(80,104,164,.10);
+  animation:skeSplashTruckRun 1.5s cubic-bezier(.45,0,.2,1) infinite alternate;
+}
+.ske-splash-status{
+  min-height:22px;display:flex;align-items:center;justify-content:center;
+  color:#56627A;font-size:12.5px;font-weight:850;letter-spacing:.03em;
+}
+.ske-splash-dots::after{
+  content:"";display:inline-block;width:18px;text-align:left;
+  animation:skeSplashDots 1.2s steps(4,end) infinite;
+}
+.ske-splash-pulses{display:flex;align-items:center;gap:5px;height:9px;}
+.ske-splash-pulses i{
+  display:block;width:5px;height:5px;border-radius:50%;
+  background:#268DFF;box-shadow:0 0 8px rgba(38,141,255,.55);
+  animation:skeSplashPulse 1.05s ease-in-out infinite;
+}
+.ske-splash-pulses i:nth-child(2){background:#8647FF;animation-delay:.16s;}
+.ske-splash-pulses i:nth-child(3){background:#FF6A28;animation-delay:.32s;}
+#splashInstallBtn{display:none!important;}
+@keyframes skeSplashStageIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes skeSplashLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes skeSplashAura{0%,100%{transform:scale(.94) rotate(0);opacity:.38}50%{transform:scale(1.06) rotate(10deg);opacity:.62}}
+@keyframes skeSplashFill{0%{width:22%}100%{width:91%}}
+@keyframes skeSplashGradient{to{background-position:200% 0}}
+@keyframes skeSplashShine{0%{left:-48%}72%,100%{left:118%}}
+@keyframes skeSplashTruckRun{0%{left:20%}100%{left:89%}}
+@keyframes skeSplashDots{0%{content:""}25%{content:"."}50%{content:".."}75%,100%{content:"..."}}
+@keyframes skeSplashPulse{0%,100%{opacity:.28;transform:scale(.72)}50%{opacity:1;transform:scale(1.35)}}
+@keyframes skeSplashOrbit{to{transform:rotate(360deg)}}
+@media(max-width:420px){
+  .ske-splash-logo-wrap{width:min(66vw,250px)}
+  .ske-splash-loader{margin-top:25px}
+}
+@media(prefers-reduced-motion:reduce){
+  #splash::before,#splash::after,.ske-splash-logo,.ske-splash-logo-wrap::before,
+  .ske-splash-progress,.ske-splash-progress::after,.ske-splash-truck,.ske-splash-pulses i{animation:none}
+  .ske-splash-progress{width:78%}.ske-splash-truck{left:76%}
+}
 
 
 /* ── Topbar ── */
@@ -2585,8 +2678,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
 @keyframes docSpin{to{transform:rotate(360deg)}}
 @keyframes docToastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 
-/* ── โลโก้เจ้าของสำหรับรุ่นทดลอง ──
-   pointer-events:none ทำให้โลโก้ไม่ขวางการแตะ กรอกข้อมูล หรือเลื่อนหน้าจอ */
+/* โลโก้เจ้าของรุ่นทดลองแบบจาง ไม่ขวางการแตะหรือเลื่อนหน้าจอ */
 .ske-trial-owner-logo{
   position:fixed;left:10px;bottom:104px;z-index:99998;
   width:78px;height:auto;opacity:.20;filter:grayscale(.15);mix-blend-mode:multiply;
@@ -2608,53 +2700,44 @@ select.inp option{background:#fff;color:#1a1a2e;}
   🧪 Firebase Trial · ske-truck-dev
 </div>
 
-<!-- ══ SPLASH ══ -->
-<div id="splash" class="screen" style="display:flex;background:#fff;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
-  <img src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO" style="width:60vw;max-width:280px;min-width:200px;height:auto;">
-  <div style="color:#1a1a2e;font-size:16px;font-weight:700;letter-spacing:1.5px;margin-top:4px;">CUSTOMER FIREBASE TRIAL · ข้อมูลเริ่มต้นว่าง</div>
-  <div class="ske-splash-loader" aria-label="กำลังเชื่อมต่อระบบ">
-    <div class="ske-splash-track">
-      <div class="ske-splash-progress"></div>
-      <div class="ske-splash-shine"></div>
+<!-- ══ SKE PREMIUM SPLASH ══ -->
+<div id="splash" class="screen">
+  <div class="ske-splash-stage">
+    <div class="ske-splash-logo-wrap">
+      <img class="ske-splash-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO">
     </div>
-    <div class="ske-splash-status">
-      <span class="ske-splash-truck" aria-hidden="true">🚚</span>
-      <span>กำลังเชื่อมต่อระบบ</span><span class="ske-splash-ellipsis" aria-hidden="true"></span>
+    <div class="ske-splash-brand">CUSTOMER FIREBASE TRIAL</div>
+    <div class="ske-splash-caption">Smart Transport System</div>
+    <div class="ske-splash-loader" aria-label="กำลังเชื่อมต่อระบบ">
+      <div class="ske-splash-track">
+        <div class="ske-splash-track-inner">
+          <div class="ske-splash-progress"></div>
+        </div>
+        <span class="ske-splash-truck" aria-hidden="true">🚚</span>
+      </div>
+      <div class="ske-splash-status">
+        <span>กำลังเชื่อมต่อระบบ TEST</span><span class="ske-splash-dots" aria-hidden="true"></span>
+      </div>
+      <div class="ske-splash-pulses" aria-hidden="true"><i></i><i></i><i></i></div>
     </div>
   </div>
-  <div id="splashInstallBtn" style="display:none;margin-top:24px;"></div>
+  <div id="splashInstallBtn"></div>
 </div>
-<style>
-/* Splash loader — bright multicolor while preserving the existing logo position */
-.ske-splash-loader{width:min(72vw,300px);margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:11px;}
-.ske-splash-track{position:relative;width:100%;height:10px;border-radius:999px;overflow:hidden;background:#EEF1F6;box-shadow:inset 0 1px 3px rgba(31,41,55,.10),0 6px 18px rgba(82,91,255,.10);}
-.ske-splash-progress{position:absolute;inset:0 auto 0 0;width:58%;border-radius:inherit;background:linear-gradient(90deg,#35C6FF 0%,#675CFF 22%,#B84DFF 42%,#FF4D9D 61%,#FF8A2A 79%,#FFD93D 91%,#52D273 100%);background-size:180% 100%;animation:skeSplashFill 1.55s cubic-bezier(.4,0,.2,1) infinite alternate,skeSplashGradient 2.4s linear infinite;box-shadow:0 0 12px rgba(103,92,255,.30);}
-.ske-splash-shine{position:absolute;top:0;bottom:0;width:34%;left:-38%;transform:skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.82),transparent);animation:skeSplashShine 1.35s ease-in-out infinite;}
-.ske-splash-status{display:flex;align-items:center;justify-content:center;color:#667085;font-size:12.5px;font-weight:700;letter-spacing:.15px;min-height:20px;}
-.ske-splash-truck{display:inline-block;margin-right:7px;font-size:15px;animation:skeSplashTruck 1.2s ease-in-out infinite;}
-.ske-splash-ellipsis::after{content:'';display:inline-block;width:14px;text-align:left;animation:skeSplashDots 1.2s steps(4,end) infinite;}
-@keyframes skeSplashFill{0%{width:22%}100%{width:88%}}
-@keyframes skeSplashGradient{to{background-position:180% 0}}
-@keyframes skeSplashShine{0%{left:-38%}70%,100%{left:112%}}
-@keyframes skeSplashTruck{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
-@keyframes skeSplashDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%,100%{content:'...'}}
-@media (prefers-reduced-motion:reduce){.ske-splash-progress,.ske-splash-shine,.ske-splash-truck,.ske-splash-ellipsis::after{animation:none}.ske-splash-progress{width:72%}.ske-splash-ellipsis::after{content:'...'}}
-</style>
 
 <!-- ══ LOGIN ══ -->
 <div id="login" class="screen hidden">
   <!-- topbar -->
   <div class="topbar">
-    <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</span></div></div>
+    <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.13T</span></div></div>
   </div>
 
   <div class="login-inner">
     <div class="login-logo-wrap">
-      <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
+      <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v3.2.13T</div>
       </div>
     </div>
 
@@ -2771,8 +2854,8 @@ select.inp option{background:#fff;color:#1a1a2e;}
 <div id="dashboard" class="screen hidden" style="background:linear-gradient(180deg,#F8FAFF 0%,#F5F3FF 45%,#F8FAFC 100%);">
   <!-- topbar -->
   <div class="topbar">
-    <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</span></div></div>
+    <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.13T</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -2785,7 +2868,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="my-card"><div id="myCard" class="my-card-inner"></div></div>
 
   <!-- ── แจ้งซ่อม / เปลี่ยนถ่ายของเหลว / เบิกเงินพนักงาน ── -->
-  <div class="quick-grid">
+  <div class="quick-grid" id="dashboardQuickActions">
     <button class="quick-card" onclick="openRepairModal()">
       <span id="repairDot" class="quick-card-dot hidden">0</span>
       <div class="quick-card-icon" data-ic="wrench"></div>
@@ -2806,7 +2889,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       </div>
     </button>
   </div>
-  <button onclick="openFeedbackModal()" style="width:100%;display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #E8EAF0;border-radius:12px;padding:9px 12px;margin-top:8px;box-shadow:0 2px 8px rgba(0,0,0,.04);">
+  <button id="dashboardFeedbackButton" onclick="openFeedbackModal()" style="width:100%;display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #E8EAF0;border-radius:12px;padding:9px 12px;margin-top:8px;box-shadow:0 2px 8px rgba(0,0,0,.04);">
     <span style="font-size:17px;">💬</span>
     <span style="font-size:12.5px;font-weight:700;color:#333;">ความคิดเห็น/ข้อเสนอแนะ</span>
     <span style="font-size:11px;color:#999;margin-left:auto;">บอกอะไรบริษัทได้ที่นี่ ›</span>
@@ -3027,8 +3110,8 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
-    <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v1" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v2026.07.28-trial-v4-ske-logo-mark-app-check-v3</div></div>
+    <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v3.2.13T</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3454,6 +3537,10 @@ const STATUSES=[
   {id:"repairing",  label:"กำลังซ่อมรถอยู่",       ic:"wrench",   emoji:"🔧",color:"#B91C1C",bg:"#FEF2F2",border:"#FCA5A5"},
   {id:"done",       label:"สแตนบายว่างงาน",        ic:"idle",     emoji:"✅",color:"#065F46",bg:"#ECFDF5",border:"#6EE7B7"},
 ];
+// "จบงาน" เป็นคำสั่งเปลี่ยนผ่านสำหรับหน้าพนักงาน ไม่ใช่สถานะที่บันทึกค้างในฐานข้อมูล:
+// เมื่อกดแล้ว ระบบจะเลื่อนงาน queued เป็น got_job หรือเปลี่ยนเป็น done หากไม่มีงานถัดไป
+const FINISH_JOB_STATUS={id:"finish_job",label:"จบงาน",ic:"idle",emoji:"🏁",color:"#047857",bg:"#ECFDF5",border:"#34D399"};
+const EMPLOYEE_FINISHABLE_STATUSES=new Set(['got_job','loading_bay','unload_bay','loading','unloading','traveling','returning']);
 const INACTIVE_STATUS={id:"inactive",label:"ยังไม่ได้ผูกรถ (ถูกสลับออก)",ic:"idle",emoji:"⚪",color:"#64748B",bg:"#F1F5F9",border:"#CBD5E1"};
 function getS(id){if(id==='inactive')return INACTIVE_STATUS;return STATUSES.find(s=>s.id===id)||STATUSES.find(s=>s.id==='standby')||STATUSES[0];}
 // ── กันข้อมูลซ้ำ: ถ้ามีพนักงาน 2 คนขึ้นไปถือทะเบียนรถเดียวกันพร้อมกัน (เช่น แก้ไขโปรไฟล์ตรงๆ โดยไม่ผ่าน "สลับคนขับ"
@@ -3656,7 +3743,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v2026.07.28-trial-v4-ske-logo-mark-app-check-v3';
+const SKE_APP_VERSION='v3.2.13T';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -3817,7 +3904,7 @@ async function uploadPhotos(dataUrls){
   return ids;
 }
 
-const _DEFAULT_EMP=[];
+const _DEFAULT_EMP=[{"id": "emp001", "name": "นพการณ์ ขันทะ", "plate": "", "phone": "", "pin": "1111", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp002", "name": "อภิวัฒน์ กำทอง", "plate": "", "phone": "", "pin": "2222", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp003", "name": "ราม สุขจิตเกษม", "plate": "731744", "phone": "", "pin": "3333", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp004", "name": "ธีรนัย หมัดเด", "plate": "", "phone": "", "pin": "4444", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp005", "name": "อรรคพล มีแก้ว", "plate": "73-4296", "phone": "", "pin": "5555", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp006", "name": "วิชญาดา งามจันทร์", "plate": "", "phone": "", "pin": "6666", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp007", "name": "นิรุช ศรีภาชน์", "plate": "", "phone": "", "pin": "7777", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp008", "name": "ณัฎฐกฤต รักสุข", "plate": "73-1856", "phone": "", "pin": "8888", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp009", "name": "กฤษฎิ์ ชมชื่น", "plate": "73-4397", "phone": "", "pin": "9999", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp010", "name": "เจริญ ตั้งเสถียร", "plate": "73-4397", "phone": "", "pin": "1010", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp011", "name": "สำราญ สิงห์โต", "plate": "73-1854", "phone": "", "pin": "1112", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp012", "name": "ศราวุฒิ เมืองสอน", "plate": "73-4253", "phone": "", "pin": "1212", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp013", "name": "กอบชัย เสนาวัลย์", "plate": "73-1861", "phone": "", "pin": "1313", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp014", "name": "อนุรักษ์ เสยกระโทก", "plate": "73-1896", "phone": "", "pin": "1414", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp015", "name": "สิทธิโชค สระเสือ", "plate": "73-6521", "phone": "", "pin": "1515", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp016", "name": "วันชัย จันทร์คง", "plate": "73-1853", "phone": "", "pin": "1616", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}, {"id": "emp017", "name": "รัชชานนท์ กริบกระโทก", "plate": "73-1883", "phone": "", "pin": "1717", "status": "standby", "province": "", "note": "", "updatedAt": null, "standbyAt": null}];
 let employees=(()=>{
   const stored=JSON.parse(localStorage.getItem('ske_trial_fb_emp')||'[]');
   // ใช้ข้อมูลที่บันทึกไว้เสมอถ้ามี — ใช้ default เฉพาะตอนเครื่องใหม่ที่ยังไม่เคยมีข้อมูลเลย (รอ Firebase ซิงค์ข้อมูลจริงมาแทนภายในไม่กี่วินาที)
@@ -4165,14 +4252,14 @@ let _swReg = null;
 if ('serviceWorker' in navigator &&
     (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js?v=trial-firebase-v1-test-logo', { updateViaCache: 'none' }).then(reg => {
+    navigator.serviceWorker.register('sw.js?v=trial-latest-v3213t', { updateViaCache: 'none' }).then(reg => {
       _swReg = reg;
       // บังคับตรวจไฟล์ worker จากเครือข่าย ไม่ใช้สำเนาเก่าจาก HTTP cache
       reg.update().catch(() => {});
     }).catch(e => console.info('SW ยังไม่พร้อม (จะใช้งานได้เมื่ออัปขึ้นโฮสต์จริงพร้อมไฟล์ sw.js):', e.message));
   });
 }
-const _SKE_ICON='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%231E90D6"/%3E%3Ctext x="50" y="62" text-anchor="middle" font-size="24" font-weight="bold" fill="white" font-family="Arial"%3ETEST%3C/text%3E%3C/svg%3E';
+const _SKE_ICON='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%231E90D6"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E';
 // แสดงการแจ้งเตือน — ผ่าน Service Worker ถ้าพร้อม (เด้งขึ้น system tray ได้แม้อยู่เบื้องหลัง) ไม่งั้น fallback Notification ปกติ
 function showSystemNotification(title, options){
   if(!('Notification' in window) || Notification.permission!=='granted') return;
@@ -4198,17 +4285,13 @@ function showSystemNotification(title, options){
 window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 
 
-// ── Premium video intro controller ───────────────────────────────────────────
-// เอาวิดีโอ splash ออกแล้ว (17/07/2569) — ใช้โลโก้ธรรมดาแทน โชว์สั้นๆ แล้วเข้าแอปเลย ไม่ต้องโหลด/แคชไฟล์วิดีโออีกต่อไป
+// ── Splash controller ────────────────────────────────────────────────────────
+// แสดงอย่างน้อยช่วงสั้น ๆ แล้วคงหน้าโหลดไว้จน Firebase พร้อมและ show() เปิดหน้าระบบ
 window.SKEIntro={
   play:function(done){
     const splash=document.getElementById('splash');
-    if(!splash){ if(typeof done==='function')done(); return; }
-    splash.classList.remove('hidden');
-    setTimeout(()=>{
-      splash.classList.add('ske-intro-fadeout');
-      setTimeout(()=>{ splash.classList.add('hidden'); splash.classList.remove('ske-intro-fadeout'); if(typeof done==='function')done(); },520);
-    },800);
+    if(splash)splash.classList.remove('hidden');
+    setTimeout(()=>{ if(typeof done==='function')done(); },800);
   }
 };
 
@@ -4592,9 +4675,9 @@ function showAlertModal(me, hoursAgo){
   document.getElementById('alertModal').style.display='flex';
   playAlertSound();
   // แจ้งเตือนระบบ (เด้งถาดระบบ+สั่น แม้อยู่เบื้องหลัง)
-  showSystemNotification('⚠️ แจ้งเตือนสถานะรถ TEST', {
+  showSystemNotification('⚠️ แจ้งเตือนระบบสถานะรถ TEST', {
     body: `${s?.emoji||''} ${s?.label} — ไม่อัพเดทมา ${timeStr} กรุณาอัพเดทสถานะ`,
-    icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23F47920"/%3E%3Ctext x="50" y="62" text-anchor="middle" font-size="24" font-weight="bold" fill="white" font-family="Arial"%3ETEST%3C/text%3E%3C/svg%3E'
+    icon: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23F47920"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E'
   });
 }
 
@@ -4667,7 +4750,7 @@ function notifyNewlyAvailable(oldList,newList){
       const names=becameAvailable.map(e=>e.name).join(', ');
       showSystemNotification('✅ มีรถว่างงานใหม่!', {
         body:`${names} — เปลี่ยนเป็นสแตนบายว่างงานแล้ว`,
-        icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%2310B981"/%3E%3Ctext x="50" y="62" text-anchor="middle" font-size="24" font-weight="bold" fill="white" font-family="Arial"%3ETEST%3C/text%3E%3C/svg%3E'
+        icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%2310B981"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E'
       });
     }
   }
@@ -4680,7 +4763,7 @@ function notifyNewlyAvailable(oldList,newList){
       }).join(' • ');
       showSystemNotification('🔔 มีการเปลี่ยนสถานะรถ', {
         body:detail,
-        icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%231E90D6"/%3E%3Ctext x="50" y="62" text-anchor="middle" font-size="24" font-weight="bold" fill="white" font-family="Arial"%3ETEST%3C/text%3E%3C/svg%3E'
+        icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%231E90D6"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E'
       });
     }
   }
@@ -4774,9 +4857,9 @@ function showAdminStaleAlert(stale){
   m.classList.remove('hidden');m.style.display='flex';
   playAlertSound();
   if('Notification' in window && Notification.permission==='granted'){
-    showSystemNotification('⚠️ แจ้งเตือนสถานะรถ TEST', {
+    showSystemNotification('⚠️ แจ้งเตือนระบบสถานะรถ TEST', {
       body:`มีพนักงาน ${stale.length} คน ไม่อัพเดทสถานะนานผิดปกติ`,
-      icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23F47920"/%3E%3Ctext x="50" y="62" text-anchor="middle" font-size="24" font-weight="bold" fill="white" font-family="Arial"%3ETEST%3C/text%3E%3C/svg%3E'
+      icon:'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23F47920"/%3E%3Ctext x="50" y="65" text-anchor="middle" font-size="36" fill="white" font-family="Arial"%3ESKE%3C/text%3E%3C/svg%3E'
     });
   }
 }
@@ -4810,6 +4893,7 @@ function doLogout(){if(window.fbUnregisterPushToken)window.fbUnregisterPushToken
 
 // ── Employee settings sheet (โปรไฟล์ + ออกจากระบบ) ───────────────────────────
 function openEmpSettings(){
+  if(denySharedTruckRestrictedAccess())return;
   const me=employees.find(e=>e.id===currentUser?.id)||currentUser;
   if(!me){show('login');renderEmpList();return;}
   const n=document.getElementById('setName'),p=document.getElementById('setPlate'),ph=document.getElementById('setPhone'),li=document.getElementById('setLineId');
@@ -4843,6 +4927,7 @@ function _refreshSettingsAvatar(me){
 }
 
 async function handleAvatarChange(input){
+  if(denySharedTruckRestrictedAccess()){if(input)input.value='';return;}
   const file=input.files&&input.files[0];
   if(!file||!currentUser)return;
   try{
@@ -4868,6 +4953,7 @@ async function handleAvatarChange(input){
 }
 
 function removeAvatar(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser)return;
   const av=document.getElementById('settingsAvatar');
   const me=employees.find(e=>e.id===currentUser.id)||currentUser;
@@ -4888,6 +4974,7 @@ function closeEmpSettings(){
   document.getElementById('navHome')?.classList.add('active');
 }
 function doSaveProfile(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser){closeEmpSettings();return;}
   const name=document.getElementById('setName').value.trim();
   const plate=document.getElementById('setPlate').value.trim().toUpperCase();
@@ -4912,6 +4999,7 @@ function doSaveProfile(){
 
 // เปลี่ยน PIN ของตนเอง: ตรวจ PIN เดิม + PIN ใหม่ 2 ช่องต้องตรงกัน (กันบุคคลที่ 3 มาแก้)
 function doChangeMyPin(){
+  if(denySharedTruckRestrictedAccess())return;
   const m=document.getElementById('myPinMsg');
   const showErr=(t)=>{if(m){m.textContent=t;m.className='msg-err';m.classList.remove('hidden');}};
   if(!currentUser){closeEmpSettings();return;}
@@ -4946,6 +5034,7 @@ function saveFeedbacks(){
   return Promise.resolve();
 }
 function openFeedbackModal(){
+  if(denySharedTruckRestrictedAccess())return;
   const m=document.getElementById('fbMsg');
   if(m)m.classList.add('hidden');
   document.getElementById('feedbackModal')?.classList.remove('hidden');
@@ -5012,6 +5101,7 @@ async function delFeedback(id){
 // ── รายการแจ้งซ่อม (Repair reports) ─────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════
 function openRepairModal(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser)return;
   document.getElementById('repairForm').classList.add('hidden');
   document.getElementById('repairFormToggleBtn').textContent='+ แจ้งซ่อมใหม่';
@@ -5517,6 +5607,7 @@ function fmtDate(d){if(!d)return'-';try{return new Date(d+'T00:00:00').toLocaleD
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 function openFluidModal(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser)return;
   document.getElementById('fluidForm').classList.add('hidden');
   document.getElementById('fluidFormToggleBtn').textContent='+ บันทึกการเปลี่ยนถ่ายใหม่';
@@ -5663,6 +5754,7 @@ function _cashPhotosHTML(s,maxH){
   ).join('')}</div>`;
 }
 function openCashModal(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser)return;
   document.getElementById('cashForm').classList.add('hidden');
   document.getElementById('cashFormToggleBtn').textContent='+ เบิกเงินใหม่';
@@ -6406,13 +6498,15 @@ function provHTML(sid,curProv){
     standby:`${skeIcon('pin')} จังหวัดที่สแตนบาย`,
     traveling:`🏁 จังหวัดปลายทาง`,
     returning:`🔁 จังหวัดที่กำลังไหลกลับผ่าน/ปลายทางขากลับ`,
-    done:`${skeIcon('pin')} จังหวัดที่ว่างงาน`
+    done:`${skeIcon('pin')} จังหวัดที่ว่างงาน`,
+    finish_job:`${skeIcon('pin')} จังหวัดที่จะสแตนบายหลังจบงาน`
   };
   const phs={
     standby:'พิมพ์ค้นหาจังหวัด...',
     traveling:'พิมพ์ค้นหาปลายทาง...',
     returning:'พิมพ์ค้นหาจังหวัด...',
-    done:'พิมพ์ค้นหาจังหวัด...'
+    done:'พิมพ์ค้นหาจังหวัด...',
+    finish_job:'พิมพ์ค้นหาจังหวัด...'
   };
   if(!titles[sid])return'';
   // ใช้ input+datalist แทน select เดิม เพื่อให้พิมพ์ค้นหาจังหวัดได้ (native select ธรรมดาเลื่อนหาอย่างเดียว)
@@ -6552,6 +6646,7 @@ async function compressMonthlyDocImage(file, maxSide=1280, quality=.78){
 }
 async function handleMonthlyDocPhoto(ev){
   const input=ev&&ev.target;
+  if(denySharedTruckRestrictedAccess()){if(input)input.value='';return;}
   try{
     if(!isMonthlyDocWindowOpen()){
       alert('ระบบเปิดให้ส่งเอกสารเฉพาะวันที่ 1-15 ของทุกเดือนเท่านั้น');
@@ -6817,6 +6912,51 @@ function saveEditRunLogEntry(id){
   if(document.getElementById('employeeRunLogModal'))openEmployeeRunLogModal();
 }
 
+// ── สิทธิ์ตำแหน่ง "รถร่วม" ────────────────────────────────────────────────
+// รถร่วมใช้หน้าแอปได้เฉพาะการดู/แก้สถานะรถ และบันทึกวิ่งงานของตนเอง
+// ไม่ให้เปิดข้อมูลบุคคลอื่น คิวรถ สภาพอากาศ เอกสาร ลางาน ซ่อมบำรุง การเงิน
+// ความคิดเห็น หน้าตั้งค่า หรือแผงผู้ดูแลผ่านปุ่ม/ฟังก์ชันภายในแอป
+function isSharedTruckEmployee(emp){
+  return String(emp?.position||'').trim()==='รถร่วม';
+}
+function getCurrentEmployeeRecord(){
+  return employees.find(e=>String(e.id)===String(currentUser?.id))||currentUser||null;
+}
+function isCurrentUserSharedTruck(){
+  return isSharedTruckEmployee(getCurrentEmployeeRecord());
+}
+function denySharedTruckRestrictedAccess(){
+  if(!isCurrentUserSharedTruck())return false;
+  alert('⛔ บัญชีรถร่วมใช้งานได้เฉพาะสถานะรถและบันทึกงาน');
+  return true;
+}
+function canSelfUpdateVehicleStatus(position){
+  if(!position)return true;
+  return position==='พนักงานขับรถ'||position==='รถร่วม';
+}
+function renderSharedTruckDashboardCard(me,s,lbl){
+  return `
+    <div class="emp-profile-head">
+      <div class="avatar">${avatarImg(me,62)}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="emp-name">${esc(me.name)} <span style="font-size:11px;color:#0369A1;background:#E0F2FE;border-radius:999px;padding:2px 7px;">รถร่วม</span></div>
+        <div class="emp-meta">🚛 ${esc(me.plate||'-')}</div>
+      </div>
+      <button id="editBtn" class="emp-edit-btn" onclick="openStatusModal()">✎ แก้ไขสถานะ</button>
+    </div>
+    <div class="emp-status-strip">
+      <div class="emp-status-left"><span style="font-size:26px;">${skeIcon(s.ic)}</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lbl}</span></div>
+      <span class="emp-status-badge">${me.status==='standby'?'รอขึ้นงาน':s.label}</span>
+    </div>
+    ${me.note?`<div style="margin-top:10px;background:#F8FAFC;border:1.5px solid #CBD5E1;border-radius:12px;padding:11px 13px;">
+      <div style="font-size:11px;font-weight:800;color:#475569;margin-bottom:4px;">${skeIcon('note')} รายละเอียดสถานะ/งาน</div>
+      <div style="font-size:13.5px;color:#0F172A;font-weight:700;line-height:1.6;white-space:pre-wrap;">${esc(me.note)}</div>
+    </div>`:''}
+    ${renderEmployeeRunLogCard(me)}
+    ${me.updatedAt?`<div style="color:#94A3B8;font-size:11px;margin-top:7px;">🕐 อัพเดทสถานะ: ${fmt(me.updatedAt)}</div>`:''}
+    <button class="btn btn-gray btn-full" style="font-size:12px;margin-top:14px;" onclick="doLogout()">🚪 ออกจากระบบ</button>`;
+}
+
 function renderDashboard(){
   if(!requireActiveEmployee())return;
   // sync currentUser จาก employees (กันกรณี localStorage เก่า)
@@ -6829,6 +6969,7 @@ function renderDashboard(){
     window.skeHandleDeletedEmployee(currentUser?.id,'ไม่พบบัญชีพนักงานนี้ในระบบแล้ว');
     return;
   }
+  const sharedTruck=isSharedTruckEmployee(me);
   const s=getS(me.status);const lbl=getFullLabel(me);
   if(!editOpen&&!document.getElementById('statusEditModal')){
     // ซิงค์ค่าที่กำลังเลือกจากข้อมูลล่าสุดเฉพาะตอนยังไม่ได้เปิดแผงแก้ไขอยู่จริงๆ (เช็ค 2 ชั้น: ทั้ง flag และ DOM จริง)
@@ -6836,18 +6977,29 @@ function renderDashboard(){
     _selStatus=me.status;_selProv=me.province||'';
   }
   const leavePill=me.onLeave?leaveApprovalPill(me):null;
-  const queueInfo=getQueuePosition(me);
-  const queuedJobs=getQueuedEmployeeJobRows(me);
+  const queueInfo=sharedTruck?null:getQueuePosition(me);
+  const queuedJobs=sharedTruck?[]:getQueuedEmployeeJobRows(me);
 
-  document.getElementById('adminBadge').classList.toggle('hidden',!adminMode);
-  document.getElementById('navAdmin').style.display=adminMode?'flex':'none';
+  document.getElementById('dashboard')?.classList.toggle('shared-truck-mode',sharedTruck);
+  document.getElementById('adminBadge').classList.toggle('hidden',!adminMode||sharedTruck);
+  document.getElementById('navAdmin').style.display=adminMode&&!sharedTruck?'flex':'none';
+  document.getElementById('navSettings').style.display=sharedTruck?'none':'flex';
+  document.getElementById('dashboardQuickActions').style.display=sharedTruck?'none':'';
+  document.getElementById('dashboardFeedbackButton').style.display=sharedTruck?'none':'flex';
+  if(sharedTruck){
+    closeEmpSettings();
+    ['repairModal','fluidModal','cashModal','feedbackModal'].forEach(id=>{
+      const modal=document.getElementById(id);
+      if(modal){modal.classList.add('hidden');modal.style.display='none';}
+    });
+  }
 
 
   const mc=document.getElementById('myCard');
   mc.style.background='#fff';
   mc.style.border='1.5px solid #E8EAF0';
   mc.style.boxShadow='0 8px 28px rgba(17,24,39,.08)';
-  mc.innerHTML=`
+  mc.innerHTML=sharedTruck?renderSharedTruckDashboardCard(me,s,lbl):`
     <div class="emp-profile-head">
       <div class="avatar">${avatarImg(me,62)}${leaveIcon(me)}</div>
       <div style="flex:1;min-width:0;">
@@ -6923,8 +7075,8 @@ function renderDashboard(){
       `}
     </div>`;
 
-  if(me.province)updateWeatherWidget(me.province);
-  updateMaintBadges();
+  if(!sharedTruck&&me.province)updateWeatherWidget(me.province);
+  if(!sharedTruck)updateMaintBadges();
 }
 // แสดงช่วงวันที่ลาแบบอ่านง่าย (ถ้าวันเริ่ม-สิ้นสุดเป็นวันเดียวกันโชว์วันเดียว)
 function fmtLeaveRange(e){
@@ -7027,6 +7179,7 @@ function adminClearLeaveToNormal(id){
 }
 
 function toggleLeaveForm(){
+  if(denySharedTruckRestrictedAccess())return;
   leaveFormOpen=!leaveFormOpen;
   renderDashboard();
 }
@@ -7039,6 +7192,7 @@ function _isLeaveDayAllowed(dateStr){
   return day>=16&&day<=25;
 }
 function doRequestLeave(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser)return;
   const fromEl=document.getElementById('leaveFromInp');
   const toEl=document.getElementById('leaveToInp');
@@ -7064,6 +7218,7 @@ function doRequestLeave(){
   }
 }
 function doCancelLeave(){
+  if(denySharedTruckRestrictedAccess())return;
   if(!currentUser)return;
   if(!confirm('ยกเลิกการลานี้?'))return;
   const patch={onLeave:false,leaveReply:null,leaveReplyAt:null};
@@ -7301,13 +7456,12 @@ function updateLeaveBadge(){
 
 // รายชื่อพนักงานแบบเรียบ (ไม่จัดกลุ่มจังหวัด) ใช้กับสถานะอื่นๆ ที่ไม่ใช่ standby/traveling
 function renderStatusEmployeeList(st){
-  const todayISO=todayStrJP();
   const list=_dedupByPlate(employees).filter(e=>{
     if(e.status!==st.id||isLeaveActiveToday(e))return false;
-    // รถร่วมในสถานะ "ได้งานแล้ว" — ถ้าวันที่ของงานที่จ่ายไปไม่ตรงกับวันนี้อีกต่อไป (ผ่านไปแล้ว) ให้หายจากลิสต์นี้ไปเลย
-    // เพราะรถร่วมไม่ได้ใช้แอปเอง ไม่มีทางอัพเดทสถานะตัวเองเมื่อจบงานแล้ว ถ้าไม่กรองจะค้างโชว์เป็นข้อมูลเก่าเรื่อยๆ
-    // (ไม่แตะ/ไม่เปลี่ยนสถานะจริงในฐานข้อมูลเลย แค่ไม่นำมาแสดงในลิสต์นี้เท่านั้น ยังดูได้จากหน้าจัดการพนักงานตามปกติ)
-    if(st.id==='got_job'&&e.position==='รถร่วม'&&e.jobWorkDate&&e.jobWorkDate!==todayISO)return false;
+    // รถร่วมในสถานะ "ได้งานแล้ว" ต้องแสดงทันทีทั้งงานวันนี้และงานอนาคต เพื่อให้ส่วนกลางรู้ว่ารถคันนี้มีงานแล้ว
+    // ซ่อนเฉพาะงานย้อนหลังที่ค้างอยู่ เพราะรถร่วมไม่ได้ใช้แอปเองและอาจไม่มีผู้กดจบงาน
+    // (ไม่แตะ/ไม่เปลี่ยนสถานะจริงในฐานข้อมูล แค่ไม่นำงานย้อนหลังมาแสดงในลิสต์นี้)
+    if(st.id==='got_job'&&e.position==='รถร่วม'&&e.jobWorkDate&&isPastWorkDate(e.jobWorkDate))return false;
     return true;
   });
   if(!list.length)return'';
@@ -7372,6 +7526,12 @@ function openStatusModal(){
   _selProv=me.province||'';
   closeStatusModal(false);
   editOpen=true; // สำคัญ: กันไม่ให้ renderDashboard (ที่ทำงานพื้นหลังตอนมีข้อมูลอัพเดทจากคนอื่น) มาทับค่าที่กำลังกรอกอยู่ในฟอร์มนี้
+  const canFinishJob=Boolean(getCurrentEmployeeJobRow(me))||EMPLOYEE_FINISHABLE_STATUSES.has(me.status);
+  // คงหัวข้อ "สแตนบายว่างงาน" ไว้เสมอ และเพิ่ม "จบงาน" เป็นคำสั่งเฉพาะระหว่างมีงาน
+  // ระหว่างมีงานจะล็อกปุ่มว่างงานไว้ เพื่อไม่ให้ข้ามขั้นตอนปิดแถวงาน/เลื่อนคิว
+  const employeeStatusOptions=canFinishJob
+    ?STATUSES.concat([FINISH_JOB_STATUS])
+    :STATUSES;
   const modal=document.createElement('div');
   modal.id='statusEditModal';
   modal.className='status-modal';
@@ -7385,14 +7545,19 @@ function openStatusModal(){
         <button class="status-close" onclick="closeStatusModal()">✕</button>
       </div>
       <div class="inp-label">เลือกสถานะ</div>
-      <div class="status-grid">${STATUSES.map(st=>{
-        const meOffice=!isDrivingPosition(me.position);
-        const disabled=meOffice&&st.id==='standby';
+      <div class="status-grid">${employeeStatusOptions.map(st=>{
+        const meOffice=!canSelfUpdateVehicleStatus(me.position);
+        // รถที่กำลังไหลกลับและถึงแล้ว สามารถเลือก "สแตนบายว่างงาน" ได้โดยตรง
+        // สถานะงานอื่นยังต้องใช้ปุ่ม "จบงาน" เพื่อป้องกันการข้ามคิว
+        const disabled=(meOffice&&st.id==='standby')||(canFinishJob&&st.id==='done'&&me.status!=='returning');
         return`
         <button type="button" class="status-opt ${_selStatus===st.id?'sel':''}" id="sopt_${st.id}" ${disabled?'disabled':''}
           style="border-color:${_selStatus===st.id?st.color:'#E8EAF0'};color:${disabled?'#CBD5E1':(_selStatus===st.id?st.color:'#888')};background:${disabled?'#F8FAFC':(_selStatus===st.id?st.bg:'#F5F6FA')};${disabled?'cursor:not-allowed;':''}"
           ${disabled?'':`onclick="selStat('${st.id}')"`}><span class="status-emoji" style="color:${disabled?'#CBD5E1':st.color}">${skeIcon(st.ic)}</span><br>${st.label}</button>`;}).join('')}</div>
-      <div id="provWrap">${(!isDrivingPosition(me.position)||!me.plate)?'<div style="font-size:11.5px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:8px 10px;">📍 ไม่ต้องระบุจังหวัดสแตนบาย (พนักงานออฟฟิศ)</div>':provHTML(_selStatus,_selProv)}</div>
+      ${canFinishJob?(me.status==='returning'
+        ?'<div style="font-size:11.5px;color:#047857;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;padding:8px 10px;margin-top:8px;">✅ เมื่อรถถึงแล้ว เลือก “สแตนบายว่างงาน” ได้ทันที — ระบบจะปิดงานเดิมและตรวจงานถัดไปให้อัตโนมัติ</div>'
+        :'<div style="font-size:11.5px;color:#047857;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;padding:8px 10px;margin-top:8px;">🏁 เมื่อต้องการว่างงาน ให้กด “จบงาน” — ระบบจะเลื่อนงานถัดไป หรือเปลี่ยนเป็นสแตนบายว่างงานอัตโนมัติ</div>'):''}
+      <div id="provWrap">${(!canSelfUpdateVehicleStatus(me.position)||!me.plate)?'<div style="font-size:11.5px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:8px 10px;">📍 ไม่ต้องระบุจังหวัดสแตนบาย (ไม่มีสิทธิ์ติดตามรถหรือยังไม่มีทะเบียน)</div>':provHTML(_selStatus,_selProv)}</div>
       <div class="inp-label" style="margin-top:10px;">หมายเหตุ</div>
       <textarea id="noteInp" rows="2" class="inp" style="width:100%;" placeholder="หมายเหตุ (ไม่บังคับ)">${esc(me.note||'')}</textarea>
       <button class="btn btn-blue btn-full" style="margin-top:12px;" onclick="doSave()">✓ บันทึกสถานะ</button>
@@ -7439,7 +7604,7 @@ function selStat(id){
   const curSel=document.getElementById('provSel');
   if(curSel)_selProv=curSel.value;
   _selStatus=id;
-  STATUSES.forEach(st=>{
+  [...STATUSES,FINISH_JOB_STATUS].forEach(st=>{
     const b=document.getElementById('sopt_'+st.id);if(!b)return;
     b.style.borderColor=id===st.id?st.color:'#E8EAF0';
     b.style.color=id===st.id?st.color:'#888';
@@ -7448,8 +7613,8 @@ function selStat(id){
   });
   const w=document.getElementById('provWrap');
   if(w){
-    const isOffice=!isDrivingPosition(currentUser?.position)||!(currentUser&&currentUser.plate);
-    w.innerHTML=isOffice?'<div style="font-size:11.5px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:8px 10px;">📍 ไม่ต้องระบุจังหวัดสแตนบาย (พนักงานออฟฟิศ)</div>':provHTML(id,(id==='standby'||id==='traveling'||id==='returning'||id==='done')?_selProv:'');
+    const isOffice=!canSelfUpdateVehicleStatus(currentUser?.position)||!(currentUser&&currentUser.plate);
+    w.innerHTML=isOffice?'<div style="font-size:11.5px;color:#94A3B8;background:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:8px 10px;">📍 ไม่ต้องระบุจังหวัดสแตนบาย (ไม่มีสิทธิ์ติดตามรถหรือยังไม่มีทะเบียน)</div>':provHTML(id,(id==='standby'||id==='traveling'||id==='returning'||id==='done'||id==='finish_job')?_selProv:'');
   }
 }
 
@@ -7475,13 +7640,17 @@ async function doSave(){
   const note=document.getElementById('noteInp')?.value||'';
   const provSel=document.getElementById('provSel');
   const empId=currentUser.id;
+  const prev=employees.find(e=>e.id===empId);
+  // รองรับขั้นตอนเดิม: ถ้ากำลังไหลกลับแล้วเลือก "สแตนบายว่างงาน"
+  // ให้ถือว่าเป็นการปิดงานปัจจุบันเช่นเดียวกับปุ่ม "จบงาน"
+  const isFinishAction=_selStatus==='finish_job'||(_selStatus==='done'&&prev?.status==='returning');
   // พนักงานตำแหน่งออฟฟิศ (เช่นแอดมิน) หรือไม่มีทะเบียนรถผูกอยู่ ไม่ต้องเลือกจังหวัดสแตนบาย
-  const isOffice=!isDrivingPosition(currentUser?.position)||!(currentUser&&currentUser.plate);
+  const isOffice=!canSelfUpdateVehicleStatus(currentUser?.position)||!(currentUser&&currentUser.plate);
   if(isOffice&&_selStatus==='standby'){
     alert('⚠️ ตำแหน่งนี้ไม่สามารถเลือกสถานะ "สแตนบายรอขึ้นงาน" ได้');
     return;
   }
-  const needProv=!isOffice&&(_selStatus==='standby'||_selStatus==='traveling'||_selStatus==='returning'||_selStatus==='done');
+  const needProv=!isOffice&&(_selStatus==='standby'||_selStatus==='traveling'||_selStatus==='returning'||_selStatus==='done'||isFinishAction);
   const prov=needProv?String((provSel?provSel.value:_selProv)||'').trim():'';
   if(needProv&&!prov){
     alert('⚠️ กรุณาเลือกจังหวัดก่อนบันทึกสถานะ');
@@ -7495,11 +7664,12 @@ async function doSave(){
   }
   const now=new Date().toISOString();
   // บันทึก standbyAt เมื่อเปลี่ยนมาเป็น standby ครั้งแรก
-  const prev=employees.find(e=>e.id===empId);
   const standbyAt=(_selStatus==='standby'&&prev?.status!=='standby')?now:(prev?.standbyAt||null);
-  // เมื่อพนักงานกด "สแตนบายว่างงาน" ถือว่าจบงานปัจจุบัน:
+  // "จบงาน" เป็นคำสั่งเปลี่ยนผ่าน:
   // ปิดแถวงานเดิม แล้วเลื่อนงาน queued แรกขึ้นเป็น "ได้งานแล้ว" อัตโนมัติ
-  const promotedJob=_selStatus==='done'?await finishCurrentJobAndPromoteNext(prev):null;
+  // หากไม่มีงาน queued จะบันทึกสถานะปลายทางเป็น "สแตนบายว่างงาน"
+  const promotedJob=isFinishAction?await finishCurrentJobAndPromoteNext(prev):null;
+  const finalStatus=isFinishAction?'done':_selStatus;
   const patch=promotedJob?{
     status:'got_job',
     province:'',
@@ -7513,14 +7683,14 @@ async function doSave(){
     previousNote:note,
     previousStandbyAt:null
   }:{
-    status:_selStatus,
+    status:finalStatus,
     province:prov,
     note,
     updatedAt:now,
-    standbyAt:_selStatus==='standby'?standbyAt:null,
-    ...clearJobLinkWhenLeavingGotJob(_selStatus)
+    standbyAt:finalStatus==='standby'?standbyAt:null,
+    ...clearJobLinkWhenLeavingGotJob(finalStatus)
   };
-  recordRunLogIfNeeded(prev,_selStatus,note,empId,prev?.plate||currentUser.plate,prev?.name||currentUser.name);
+  recordRunLogIfNeeded(prev,finalStatus,note,empId,prev?.plate||currentUser.plate,prev?.name||currentUser.name);
   const reapplySavedPatch=()=>{
     employees=(employees||[]).map(e=>e&&e.id===empId?{...e,...patch}:e);
     if(currentUser?.id===empId)currentUser={...currentUser,...patch};
@@ -7550,6 +7720,8 @@ async function doSave(){
     renderDashboard();
     if(promotedJob){
       showDocUploadToast('✅ จบงานเดิมแล้ว — ระบบเลื่อนงานถัดไปขึ้นเป็น "ได้งานแล้ว" อัตโนมัติ',true);
+    }else if(isFinishAction){
+      showDocUploadToast('✅ จบงานแล้ว — ไม่มีงานถัดไป ระบบเปลี่ยนเป็น "สแตนบายว่างงาน" อัตโนมัติ',true);
     }else{
       showEmployeeStatusSavedPopup();
     }
@@ -7626,7 +7798,10 @@ async function migratePhotosToStore(){
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
-function goAdmin(){show('admin');renderAdmin();switchAdminTab('summary');applyAdminRoleUI();startAdminAlertTimer();}
+function goAdmin(){
+  if(denySharedTruckRestrictedAccess())return;
+  show('admin');renderAdmin();switchAdminTab('summary');applyAdminRoleUI();startAdminAlertTimer();
+}
 function goBack(){
   // ปุ่ม "กลับ" ต้องไม่ทำให้ออกจากระบบเด็ดขาด
   // ถ้ามีพนักงาน login อยู่ → กลับไปหน้าหลักของพนักงานคนนั้น
@@ -8439,12 +8614,19 @@ function getOpenEmployeeJobRows(empId,excludeRowId){
 }
 function getCurrentEmployeeJobRow(emp,excludeRowId){
   if(!emp)return null;
-  const rows=getOpenEmployeeJobRows(emp.id,excludeRowId);
   const linkedId=String(emp.currentJobPlanId||'');
   if(linkedId){
-    const linked=rows.find(r=>String(r.id)===linkedId);
+    // งานอาจเริ่มก่อนเที่ยงคืนและมาจบในวันถัดไป จึงต้องหาแถวที่ผูกไว้โดยตรง
+    // โดยไม่ตัดทิ้งเพียงเพราะ workDate กลายเป็นวันย้อนหลังแล้ว
+    const linked=(jobPlanRows||[]).find(r=>r&&r.dispatched
+      &&String(r.empId||'')===String(emp.id||'')
+      &&r.id!==excludeRowId
+      &&String(r.id)===linkedId
+      &&!isCancelledJobPlanRow(r)
+      &&!JOB_ASSIGNMENT_DONE_STATES.has(r.assignmentState));
     if(linked)return linked;
   }
+  const rows=getOpenEmployeeJobRows(emp.id,excludeRowId);
   const explicit=rows.find(r=>r.assignmentState==='active');
   if(explicit)return explicit;
   // รองรับข้อมูลเก่าก่อนมี assignmentState: ถ้าสถานะบอกว่ากำลังทำงาน ให้ถือแถวแรกที่จ่ายแล้วเป็นงานปัจจุบัน
@@ -8515,7 +8697,7 @@ function renderJobPlanRowTR(row){
     </td>
     <td style="padding:6px;text-align:center;min-width:76px;white-space:nowrap;position:sticky;right:0;background:${bg};box-shadow:-4px 0 6px -4px rgba(0,0,0,.15);">
       <button onclick="copyRouteToDate('${row.id}')" title="คัดลอกเส้นทางนี้ไปวันอื่น" style="background:none;border:none;color:#1E90D6;font-size:14px;cursor:pointer;">📋</button>
-      ${row.dispatched?`<span title="${row.assignmentState==='queued'?'จ่ายงานแล้ว — อยู่ในคิวงานถัดไป':(row.assignmentState==='completed'?'จ่ายงานแล้ว — พนักงานจบงานแล้ว':'จ่ายงานแล้ว')}">${row.assignmentState==='queued'?'⏳ ':''}✅</span>`:`
+      ${row.dispatched?`<span title="${row.assignmentState==='queued'?'จ่ายงานแล้ว — อยู่ในคิวงานถัดไป':(row.assignmentState==='completed'?'พนักงานจบงานนี้แล้ว':'จ่ายงานแล้ว')}">${row.assignmentState==='completed'?'🏁 จบงาน':(row.assignmentState==='queued'?'⏳ ✅':'✅')}</span>`:`
         ${row.empId?`<button onclick="dispatchJobPlanRow('${row.id}')" title="จ่ายงานเส้นทางนี้เลย" style="background:none;border:none;color:#059669;font-size:14px;cursor:pointer;">🚀</button>`:''}
         <button onclick="delJobPlanRow('${row.id}')" title="ลบเส้นทางนี้" style="background:none;border:none;color:#DC2626;font-size:14px;cursor:pointer;">🗑️</button>`}
     </td>
