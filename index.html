@@ -42,7 +42,7 @@
 <meta name="apple-mobile-web-app-title" content="TRUCK TEST">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#FFFFFF">
-<link rel="manifest" href="manifest.json?v=trial-latest-v3214t">
+<link rel="manifest" href="manifest.json?v=trial-latest-v3215t">
 <title>TRUCK TEST — Firebase Trial</title>
 <!-- Firebase SDK -->
 <script type="module">
@@ -479,7 +479,7 @@
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') return;
       // ใช้ Service Worker หลักตัวเดียวร่วมกันทั้ง PWA cache และ FCM
-      const swReg = await navigator.serviceWorker.register('sw.js?v=trial-latest-v3214t', { updateViaCache: 'none' });
+      const swReg = await navigator.serviceWorker.register('sw.js?v=trial-latest-v3215t', { updateViaCache: 'none' });
       if (!_messaging) _messaging = getMessaging(app);
       const token = await getToken(_messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
       if (!token) return;
@@ -721,7 +721,7 @@
   // ทางแก้: ทุกครั้งที่เริ่มบันทึกจะขึ้น "งานค้าง" ไว้ใน localStorage (outbox) ก่อน แล้วค่อยลบออกเมื่อสำเร็จ
   // ตราบใดที่ยังมีงานค้างของชุดข้อมูลไหนอยู่ onValue ของชุดนั้นจะ "ไม่เอาข้อมูลเซิร์ฟเวอร์มาทับข้อมูลเครื่อง"
   // และระบบจะพยายามส่งซ้ำอัตโนมัติทุก 8 วิ และทันทีที่เน็ตกลับมา (.info/connected) จนกว่าจะสำเร็จ
-  console.log('[TRUCK TEST] app version: v3.2.14T');
+  console.log('[TRUCK TEST] app version: v3.2.15T');
   // ใช้คิว V2 แยกจากคิวรุ่นเก่าที่เก็บ payload ทั้งก้อน เพื่อไม่ให้คิวเก่าถูกส่งย้อนมาทับข้อมูลใหม่
   const SKE_OUTBOX_KEY = 'ske_trial_fb_outbox_v2_record_ops';
   try {
@@ -1137,6 +1137,76 @@
     await _patchRecord('employees', 'employees', empId, patch);
     employees = (employees || []).map(e => e && e.id === empId ? { ...e, ...patch } : e);
     _skeCacheSet('ske_trial_fb_emp', employees);
+  };
+
+  // ตั้ง PIN แล้วอ่านค่ากลับจาก Firebase ก่อนแจ้งว่าบันทึกสำเร็จ
+  window.fbSetEmployeePinVerified = async function(empId, pin) {
+    const id = String(empId || '');
+    const normalizedPin = String(pin || '').trim();
+    if (!id || !/^\d{4}$/.test(normalizedPin)) throw new Error('invalid employee PIN');
+    if (_isEmployeeDeleted(id)) throw new Error('employee account was deleted');
+    const employeeSnap = await _withTimeout(
+      get(ref(db, 'employees')),
+      SKE_WRITE_TIMEOUT_MS,
+      'timeout:employees-pin-find'
+    );
+    let firebaseKey = null;
+    let latestRow = null;
+    employeeSnap.forEach(child => {
+      const row = child.val();
+      if (row && String(row.id || '') === id) {
+        firebaseKey = child.key;
+        latestRow = row;
+      }
+      return firebaseKey !== null;
+    });
+    if (firebaseKey === null) throw new Error('employee PIN target not found');
+    await _withTimeout(
+      update(ref(db, 'employees/' + firebaseKey), { pin:normalizedPin }),
+      SKE_WRITE_TIMEOUT_MS,
+      'timeout:employees-pin-update'
+    );
+    const verifySnap = await _withTimeout(
+      get(ref(db, 'employees/' + firebaseKey + '/pin')),
+      SKE_WRITE_TIMEOUT_MS,
+      'timeout:employees-pin-readback'
+    );
+    if (String(verifySnap.val() ?? '').trim() !== normalizedPin) {
+      throw new Error('employee PIN verification failed');
+    }
+    employees = (employees || []).map(e => e && String(e.id) === id ? { ...e, pin:normalizedPin } : e);
+    if (_recordShadows.employees instanceof Map) {
+      const shadowRow = _recordShadows.employees.get(id) || latestRow || { id };
+      _recordShadows.employees.set(id, _cloneRecord({ ...shadowRow, pin:normalizedPin }));
+    }
+    _skeCacheSet('ske_trial_fb_emp', employees);
+    return { ok:true };
+  };
+
+  // ทุกครั้งที่กดเข้าใช้งาน ให้ตรวจ PIN ล่าสุดจาก Firebase
+  window.fbCheckEmployeePinLatest = async function(empId, pin) {
+    const id = String(empId || '');
+    const normalizedPin = String(pin || '').trim();
+    if (!id || !/^\d{4}$/.test(normalizedPin)) return { status:'invalid' };
+    if (_isEmployeeDeleted(id)) return { status:'deleted' };
+    const snap = await _withTimeout(
+      get(ref(db, 'employees')),
+      SKE_WRITE_TIMEOUT_MS,
+      'timeout:employees-pin-login'
+    );
+    let latest = null;
+    snap.forEach(child => {
+      const row = child.val();
+      if (row && String(row.id || '') === id) latest = row;
+      return !!latest;
+    });
+    if (!latest) return { status:'missing' };
+    const storedPin = String(latest.pin ?? '').trim();
+    employees = (employees || []).map(e => e && String(e.id) === id ? { ...e, ...latest } : e);
+    _skeCacheSet('ske_trial_fb_emp', employees);
+    if (!storedPin) return { status:'unset' };
+    if (!/^\d{4}$/.test(storedPin)) return { status:'invalid' };
+    return { status:storedPin === normalizedPin ? 'ok' : 'wrong' };
   };
 
   // ลบพนักงานและข้อมูลที่ผูกกับพนักงานคนนั้นจาก Firebase ใน update เดียว
@@ -1555,7 +1625,7 @@
       runLogs = data;
       localStorage.setItem('ske_trial_fb_runlogs', JSON.stringify(runLogs));
       const rm = document.getElementById('employeeRunLogModal');
-      if (rm && typeof openEmployeeRunLogModal === 'function') openEmployeeRunLogModal();
+      if (rm && typeof openEmployeeRunLogModal === 'function') openEmployeeRunLogModal(true);
       const dash = document.getElementById('dashboard');
       if (dash && !dash.classList.contains('hidden') && currentUser && typeof renderDashboard === 'function') renderDashboard();
     } else if (!_firstSync.runLogs && runLogs.length > 0) {
@@ -2799,7 +2869,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.14T</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.15T</span></div></div>
   </div>
 
   <div class="login-inner">
@@ -2807,7 +2877,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
       <div class="logo-lg"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
       <div style="text-align:center;">
         <div style="font-size:22px;font-weight:800;color:#1a1a2e;">ระบบสถานะรถ TEST</div>
-        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v3.2.14T</div>
+        <div class="ske-version-tag" style="color:#888;font-size:13px;">CUSTOMER FIREBASE TRIAL · v3.2.15T</div>
       </div>
     </div>
 
@@ -2867,7 +2937,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
         <div style="color:#555;font-size:13px;">กรอก PIN 4 หลักของคุณ</div>
         <input class="inp" id="pinInput" type="password" inputmode="numeric" maxlength="4" placeholder="● ● ● ●" style="text-align:center;font-size:24px;letter-spacing:10px;width:160px;" onkeydown="if(event.key==='Enter')doConfirmPin()">
         <div id="pinMsg" class="msg-err hidden"></div>
-        <button class="btn btn-blue btn-full" onclick="doConfirmPin()">✓ เข้าใช้งาน</button>
+        <button id="pinLoginBtn" class="btn btn-blue btn-full" onclick="doConfirmPin()">✓ เข้าใช้งาน</button>
         <button class="btn btn-gray btn-full" onclick="showMode('select')">← กลับ</button>
       </div>
     </div>
@@ -2925,7 +2995,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <!-- topbar -->
   <div class="topbar">
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.14T</span></div></div>
+    <div style="flex:1;"><div class="topbar-title">ระบบสถานะรถ TEST</div><div class="topbar-sub">CUSTOMER FIREBASE TRIAL · <span class="ske-version-tag" style="opacity:.7">v3.2.15T</span></div></div>
     <span id="adminBadge" class="badge-admin hidden">ADMIN</span>
   </div>
   <!-- breadcrumb back bar -->
@@ -3181,7 +3251,7 @@ select.inp option{background:#fff;color:#1a1a2e;}
   <div class="topbar">
     <button class="topbar-back" id="adminBackBtn" onclick="goBack()">←</button>
     <div class="topbar-logo"><img class="ske-real-logo" src="ske-logo.png?v=test-logo-v2" alt="TEST LOGO"></div>
-    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v3.2.14T</div></div>
+    <div style="flex:1;"><div class="topbar-title" id="adminPanelTitle">แผงผู้ดูแล</div><div class="ske-version-tag" style="font-size:11px;color:#aaa;">v3.2.15T</div></div>
     <button class="topbar-back" id="adminRefreshBtn" onclick="refreshAdmin()" title="รีเฟรชหน้าจอ" style="font-size:18px;">🔄</button>
     <button class="topbar-back hidden" id="adminViewerLogout" onclick="doLogout()" title="ออกจากระบบ" style="font-size:18px;">🚪</button>
     <span class="badge-admin" id="adminTopBadge">ADMIN</span>
@@ -3813,7 +3883,7 @@ function lineLink(lineId){
   return ` • <a href="https://line.me/ti/p/~${encodeURIComponent(lid)}" target="_blank" onclick="event.stopPropagation()" style="color:#06C755;font-weight:600;text-decoration:none;white-space:nowrap;">💬 LINE ด่วน</a>`;
 }
 
-const SKE_APP_VERSION='v3.2.14T';
+const SKE_APP_VERSION='v3.2.15T';
 
 // ══ เช็คเวอร์ชันใหม่อัตโนมัติ — ไม่ต้องมีไฟล์ version.json แยก ไม่ต้องจำอัปเดตคู่กันทุกครั้ง ══
 // ปัญหาที่แก้: พนักงานเปิดแอปค้างไว้นานๆ (ทั้งวัน/หลายวัน) โค้ดที่รันอยู่ในเครื่องจะเป็นเวอร์ชันเดิมตลอด
@@ -4322,7 +4392,7 @@ let _swReg = null;
 if ('serviceWorker' in navigator &&
     (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js?v=trial-latest-v3214t', { updateViaCache: 'none' }).then(reg => {
+    navigator.serviceWorker.register('sw.js?v=trial-latest-v3215t', { updateViaCache: 'none' }).then(reg => {
       _swReg = reg;
       // บังคับตรวจไฟล์ worker จากเครือข่าย ไม่ใช้สำเนาเก่าจาก HTTP cache
       reg.update().catch(() => {});
@@ -4510,23 +4580,52 @@ function askPin(id){
   showMode('pin');
   setTimeout(()=>{const p=document.getElementById('pinInput');if(p)p.focus();},200);
 }
-function doConfirmPin(){
-  const emp=employees.find(e=>e.id===_pinTargetId);
-  const entered=document.getElementById('pinInput').value.trim();
+async function doConfirmPin(){
+  const targetId=String(_pinTargetId||'');
+  const emp=employees.find(e=>String(e.id)===targetId);
+  const input=document.getElementById('pinInput');
+  const entered=String(input?.value||'').trim();
   const m=document.getElementById('pinMsg');
-  if(!emp){m.textContent='เกิดข้อผิดพลาด กรุณาลองใหม่';m.classList.remove('hidden');return;}
-  if(!emp.pin){
-    // พนักงานเก่าที่ยังไม่มี PIN — ให้ผ่านได้และบันทึก PIN ใหม่
-    if(entered.length===4&&/^\d{4}$/.test(entered)){
-      employees=employees.map(e=>e.id===emp.id?{...e,pin:entered}:e);saveE();
-      doLogin(emp.id);return;
-    }else{m.textContent='กรุณากรอก PIN 4 หลัก (ครั้งแรกระบบจะบันทึกเป็น PIN ของคุณ)';m.classList.remove('hidden');return;}
+  const btn=document.getElementById('pinLoginBtn');
+  const showPinMsg=(text,color='#E53935')=>{
+    if(!m)return;
+    m.textContent=text;m.style.color=color;m.classList.remove('hidden');
+  };
+  if(!emp){showPinMsg('เกิดข้อผิดพลาด กรุณากลับไปเลือกรายชื่อใหม่');return;}
+  if(!/^\d{4}$/.test(entered)){
+    showPinMsg('กรุณากรอก PIN ตัวเลข 4 หลัก');return;
   }
-  if(entered!==emp.pin){
-    m.textContent='❌ PIN ไม่ถูกต้อง กรุณาลองใหม่';m.classList.remove('hidden');
-    document.getElementById('pinInput').value='';return;
+  if(btn){btn.disabled=true;btn.textContent='🔄 กำลังตรวจสอบ PIN ล่าสุด...';}
+  showPinMsg('🔄 กำลังตรวจสอบ PIN ล่าสุดกับ Firebase...','#1E90D6');
+  try{
+    if(!window.fbCheckEmployeePinLatest)throw new Error('PIN login verifier is not ready');
+    const result=await window.fbCheckEmployeePinLatest(targetId,entered);
+    if(result?.status==='ok'){
+      if(_pinTargetId!==targetId)return;
+      doLogin(targetId);return;
+    }
+    if(result?.status==='wrong'){
+      showPinMsg('❌ PIN ไม่ถูกต้อง กรุณาลองใหม่');
+      if(input){input.value='';input.focus();}return;
+    }
+    if(result?.status==='unset'){
+      showPinMsg('⛔ บัญชีนี้ยังไม่มี PIN กรุณาให้ผู้ดูแลตั้ง PIN เข้าแอปให้ก่อน');return;
+    }
+    if(result?.status==='deleted'||result?.status==='missing'){
+      showPinMsg('⛔ ไม่พบบัญชีนี้ในระบบ กรุณาติดต่อผู้ดูแล');return;
+    }
+    showPinMsg('⛔ PIN ของบัญชีนี้ต้องรีเซ็ต กรุณาติดต่อผู้ดูแล');
+  }catch(err){
+    console.warn('[TRUCK TEST PIN login] ตรวจ PIN ล่าสุดจาก Firebase ไม่สำเร็จ',err);
+    const localEmp=employees.find(e=>String(e.id)===targetId)||emp;
+    const localPin=String(localEmp?.pin??'').trim();
+    if(/^\d{4}$/.test(localPin)&&entered===localPin){
+      doLogin(targetId);return;
+    }
+    showPinMsg('⚠️ ตรวจสอบ PIN กับ Firebase ไม่สำเร็จ กรุณาเช็กอินเทอร์เน็ตแล้วกดเข้าใช้งานอีกครั้ง');
+  }finally{
+    if(btn&&document.body.contains(btn)){btn.disabled=false;btn.textContent='✓ เข้าใช้งาน';}
   }
-  doLogin(emp.id);
 }
 function doLogin(id){
   const emp=employees.find(e=>e.id===id)||null;
@@ -6054,7 +6153,7 @@ function markSeenCash(){
 }
 function markSeenLeave(){
   const seen=_loadSeen('leave');
-  employees.filter(e=>e.onLeave).forEach(e=>seen.add(e.id+'_'+e.leaveAt));
+  employees.filter(e=>e.onLeave&&_leaveOverlapsCurrentMonth(e)).forEach(e=>seen.add(_leaveSeenKey(e)));
   _saveSeen('leave',seen);
   updateLeaveBadge();
 }
@@ -6070,7 +6169,7 @@ function _countNewCash(){
 }
 function _countNewLeave(){
   const seen=_loadSeen('leave');
-  return employees.filter(e=>e.onLeave&&!seen.has(e.id+'_'+e.leaveAt)).length;
+  return employees.filter(e=>e.onLeave&&_leaveOverlapsCurrentMonth(e)&&!seen.has(_leaveSeenKey(e))).length;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -6837,11 +6936,38 @@ function backfillMissedRunLogs(){
     saveRunLogs();
   }
 }
-function getRunLogEntriesForEmployee(e){
+function _runLogMonthKeyFromValue(value){
+  const d=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(d.getTime()))return'';
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit'}).formatToParts(d);
+  const year=parts.find(p=>p.type==='year')?.value||'';
+  const month=parts.find(p=>p.type==='month')?.value||'';
+  return year&&month?`${year}-${month}`:'';
+}
+function _runLogCurrentMonthKey(){return _runLogMonthKeyFromValue(new Date());}
+function _runLogMonthLabel(monthKey){
+  const m=String(monthKey||'').match(/^(\d{4})-(\d{2})$/);
+  if(!m)return'ไม่ระบุเดือน';
+  return new Date(Number(m[1]),Number(m[2])-1,15).toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+}
+function _runLogAvailableMonthsForEmployee(e){
+  if(!e)return[_runLogCurrentMonthKey()];
+  const cutoff=_runLogCutoff();
+  const keys=new Set([_runLogCurrentMonthKey()]);
+  (runLogs||[]).forEach(r=>{
+    if(r.empId!==e.id)return;
+    const time=r.createdAt?new Date(r.createdAt).getTime():NaN;
+    if(Number.isFinite(time)&&time<cutoff)return;
+    const key=_runLogMonthKeyFromValue(r.createdAt);
+    if(key)keys.add(key);
+  });
+  return[...keys].sort((a,b)=>b.localeCompare(a));
+}
+function getRunLogEntriesForEmployee(e,monthKey=_runLogCurrentMonthKey()){
   if(!e)return[];
-  const cutoff=_runLogCutoff(); // แสดงเฉพาะย้อนหลัง 3 เดือนปฏิทิน (เดือนนี้ + 2 เดือนก่อนหน้า)
+  const cutoff=_runLogCutoff();
   return (runLogs||[])
-    .filter(r=>r.empId===e.id&&(!r.createdAt||new Date(r.createdAt).getTime()>=cutoff))
+    .filter(r=>r.empId===e.id&&r.createdAt&&new Date(r.createdAt).getTime()>=cutoff&&_runLogMonthKeyFromValue(r.createdAt)===monthKey)
     .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
     .map((r,idx)=>({
       no:idx+1,
@@ -6855,7 +6981,9 @@ function getRunLogEntriesForEmployee(e){
     }));
 }
 function renderEmployeeRunLogCard(me){
-  const entries=getRunLogEntriesForEmployee(me);
+  const currentMonthKey=_runLogCurrentMonthKey();
+  const currentMonthLabel=_runLogMonthLabel(currentMonthKey);
+  const entries=getRunLogEntriesForEmployee(me,currentMonthKey);
   const total=entries.reduce((s,x)=>s+(Number(x.trips)||0),0);
   const latest=entries.slice(0,3).map(x=>`<div style="display:flex;gap:8px;align-items:flex-start;background:#fff;border:1px solid #BBF7D0;border-radius:12px;padding:9px 10px;margin-top:8px;">
     <span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:#DCFCE7;color:#047857;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;">${x.no}</span>
@@ -6876,7 +7004,7 @@ function renderEmployeeRunLogCard(me){
       <div style="display:flex;align-items:center;gap:10px;min-width:0;">
         <div style="width:42px;height:42px;border-radius:50%;background:#DCFCE7;display:flex;align-items:center;justify-content:center;font-size:25px;">🚚</div>
         <div style="min-width:0;">
-          <div style="font-size:14px;font-weight:900;color:#065F46;">บันทึกวิ่งงาน</div>
+          <div style="font-size:14px;font-weight:900;color:#065F46;">บันทึกวิ่งงาน · ${esc(currentMonthLabel)}</div>
           <div style="font-size:11.5px;color:#64748B;line-height:1.35;">นับเฉพาะสถานะออกเดินทาง + หมายเหตุมีคำว่า 6W</div>
         </div>
       </div>
@@ -6899,10 +7027,13 @@ function toggleRunLogEntryCount(el,ev){
   el.dataset.revealed=revealed?'0':'1';
   el.textContent=revealed?'🙈 •••':el.dataset.trips+' เที่ยว';
 }
-function openEmployeeRunLogModal(){
+let _runLogModalMonthKey='';
+function openEmployeeRunLogModal(keepSelectedMonth=false){
   const me=employees.find(e=>e.id===currentUser?.id)||currentUser;
   if(!me)return;
-  const entries=getRunLogEntriesForEmployee(me);
+  const months=_runLogAvailableMonthsForEmployee(me);
+  if(!keepSelectedMonth||!months.includes(_runLogModalMonthKey))_runLogModalMonthKey=_runLogCurrentMonthKey();
+  const entries=getRunLogEntriesForEmployee(me,_runLogModalMonthKey);
   const total=entries.reduce((s,x)=>s+(Number(x.trips)||0),0);
   const old=document.getElementById('employeeRunLogModal'); if(old)old.remove();
   const modal=document.createElement('div');
@@ -6926,14 +7057,31 @@ function openEmployeeRunLogModal(){
       <div><div style="font-size:18px;font-weight:900;color:#0F172A;">🚚 บันทึกวิ่งงานของฉัน</div><div style="font-size:12px;color:#64748B;margin-top:2px;">${esc(me.name||'-')} · ${esc(me.plate||'-')}</div></div>
       <button onclick="closeEmployeeRunLogModal()" style="width:36px;height:36px;border-radius:50%;background:#F1F5F9;color:#334155;font-size:20px;font-weight:900;">×</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:10px 0 8px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:8px 10px;">
+      <label for="employeeRunLogMonthSelect" style="font-size:11.5px;font-weight:900;color:#475569;white-space:nowrap;">📅 เลือกเดือน</label>
+      <select id="employeeRunLogMonthSelect" class="inp" style="margin:0;padding:7px 9px;font-size:12px;" onchange="_runLogModalMonthKey=this.value;openEmployeeRunLogModal(true)">
+        ${months.map(key=>`<option value="${esc(key)}" ${key===_runLogModalMonthKey?'selected':''}>${esc(_runLogMonthLabel(key))}${key===_runLogCurrentMonthKey()?' (เดือนปัจจุบัน)':''}</option>`).join('')}
+      </select>
+    </div>
     <div style="background:#ECFDF5;border:1px solid #BBF7D0;border-radius:14px;padding:12px;color:#065F46;font-weight:900;display:flex;justify-content:space-between;align-items:center;">
-      <span>รวมเที่ยววิ่งที่นับได้</span><span class="rl-total-box" data-total="${total}" data-revealed="0" onclick="toggleRunLogTotal(this)" style="font-size:16px;cursor:pointer;">🙈 แตะเพื่อดู</span>
+      <span>รวมเที่ยววิ่ง ${esc(_runLogMonthLabel(_runLogModalMonthKey))}</span><span class="rl-total-box" data-total="${total}" data-revealed="0" onclick="toggleRunLogTotal(this)" style="font-size:16px;cursor:pointer;">🙈 แตะเพื่อดู</span>
     </div>
     ${list}
   </div>`;
   document.body.appendChild(modal);
 }
 function closeEmployeeRunLogModal(){document.getElementById('employeeRunLogModal')?.remove();}
+
+// ถ้าเปิดแอปค้างข้ามเดือน ให้เริ่มยอดเดือนใหม่อัตโนมัติ โดยข้อมูลเดิมยังเลือกดูย้อนหลังได้
+let _runLogRenderedMonthKey=_runLogCurrentMonthKey();
+setInterval(()=>{
+  const monthKey=_runLogCurrentMonthKey();
+  if(monthKey===_runLogRenderedMonthKey)return;
+  _runLogRenderedMonthKey=monthKey;
+  _runLogModalMonthKey=monthKey;
+  if(currentUser)renderDashboard();
+  if(document.getElementById('employeeRunLogModal'))openEmployeeRunLogModal(true);
+},60*1000);
 // ── ลบเที่ยววิ่งที่บันทึกไว้ 1 รายการ (พนักงานลบของตัวเองได้) ──
 async function doDeleteRunLogEntry(id){
   const log=(runLogs||[]).find(r=>r.id===id);
@@ -6945,7 +7093,7 @@ async function doDeleteRunLogEntry(id){
     runLogs=runLogs.filter(r=>r.id!==id);
     _cacheSet('ske_trial_fb_runlogs',runLogs);
     renderDashboard();
-    if(document.getElementById('employeeRunLogModal'))openEmployeeRunLogModal();
+    if(document.getElementById('employeeRunLogModal'))openEmployeeRunLogModal(true);
   }catch(e){
     console.error('delete run log failed',e);
     alert('❌ ลบเที่ยววิ่งไม่สำเร็จ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่');
@@ -6979,7 +7127,7 @@ function saveEditRunLogEntry(id){
   saveRunLogs();
   closeEditRunLogModal();
   renderDashboard();
-  if(document.getElementById('employeeRunLogModal'))openEmployeeRunLogModal();
+  if(document.getElementById('employeeRunLogModal'))openEmployeeRunLogModal(true);
 }
 
 // ── สิทธิ์ตำแหน่ง "รถร่วม" ────────────────────────────────────────────────
@@ -7154,6 +7302,32 @@ function fmtLeaveRange(e){
   const fmtD=d=>new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
   if(e.leaveTo&&e.leaveTo!==e.leaveFrom)return`${fmtD(e.leaveFrom)} — ${fmtD(e.leaveTo)}`;
   return fmtD(e.leaveFrom);
+}
+
+// หน้าลาผู้ดูแลยึดเดือนปัจจุบัน รายการที่คาบเกี่ยวต้น/ปลายเดือนยังแสดงตามจริง
+function _leaveCurrentMonthBounds(refDate=new Date()){
+  const y=refDate.getFullYear(),m=refDate.getMonth();
+  const pad=n=>String(n).padStart(2,'0');
+  const start=`${y}-${pad(m+1)}-01`;
+  const end=`${y}-${pad(m+1)}-${pad(new Date(y,m+1,0).getDate())}`;
+  return{start,end,year:y,month:m};
+}
+function _leaveOverlapsCurrentMonth(e,refDate=new Date()){
+  if(!e)return false;
+  const rawFrom=e.leaveFrom||e.leaveAt||'';
+  if(!rawFrom)return false;
+  let from=String(rawFrom).slice(0,10);
+  let to=String(e.leaveTo||rawFrom).slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!/^\d{4}-\d{2}-\d{2}$/.test(to))return false;
+  if(to<from){const swap=from;from=to;to=swap;}
+  const month=_leaveCurrentMonthBounds(refDate);
+  return from<=month.end&&to>=month.start;
+}
+function _leaveCurrentMonthLabel(refDate=new Date()){
+  return refDate.toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+}
+function _leaveSeenKey(e){
+  return `${e?.id||''}_${String(e?.leaveFrom||e?.leaveAt||'').slice(0,10)}_${String(e?.leaveTo||e?.leaveFrom||e?.leaveAt||'').slice(0,10)}`;
 }
 
 // เช็กว่าพนักงานคนนี้อยู่ในช่วงวันลาวันนี้จริงหรือไม่ (รวมวันเริ่มและวันสิ้นสุด)
@@ -7470,9 +7644,10 @@ function buildSummaryHTML(){
 // ── แท็บ "ลา" แยกต่างหาก — รวมรายชื่อพนักงานที่แจ้งลาทั้งหมด พร้อมปุ่มอนุมัติ/ไม่อนุมัติ ──
 function buildLeaveHTML(){
   const isViewer=adminRole==='viewer';
-  const onLeaveList=employees.filter(e=>e.onLeave);
+  const onLeaveList=employees.filter(e=>e.onLeave&&_leaveOverlapsCurrentMonth(e));
   const pending=onLeaveList.filter(e=>!e.leaveApproval||e.leaveApproval==='pending').length;
   const approved=onLeaveList.filter(e=>e.leaveApproval==='approved').length;
+  const monthLabel=_leaveCurrentMonthLabel();
   // แสดง "ทุกสถานะ" ในหน้านี้ (รออนุมัติ/อนุมัติแล้ว/ไม่อนุมัติ) — เพื่อให้แอดมินเห็นภาพรวมว่าใครลาวันไหนบ้าง แม้กดอนุมัติไปแล้วก็ยังเห็นสถานะอยู่ในหน้าเดิม
   // (เดิมซ่อนรายการที่อนุมัติแล้วออกจากหน้านี้ ทำให้พอกดอนุมัติปุ๊บ รายการหายไปทันที ต้องไปหาที่ "ดูประวัติการลา" ซึ่งเป็นคนละชุดข้อมูล/มุมมอง)
   // เรียงให้ "รออนุมัติ" ขึ้นก่อนเสมอ (ต้องรีบดำเนินการ) ตามด้วยเรียงตามวันที่เริ่มลาล่าสุด
@@ -7484,9 +7659,10 @@ function buildLeaveHTML(){
     return a.leaveFrom<b.leaveFrom?-1:a.leaveFrom>b.leaveFrom?1:0;
   });
   if(!onLeaveList.length){
-    return '<div class="empty-state"><div class="empty-icon">'+skeIcon('leave')+'</div><div class="empty-text">ไม่มีพนักงานลาในขณะนี้</div></div>';
+    return `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-weight:900;color:#334155;">📅 รายการลา · ${esc(monthLabel)}<div style="font-size:11px;font-weight:500;color:#64748B;margin-top:3px;">แสดงเฉพาะเดือนปัจจุบัน เดือนเก่ายังคงเก็บไว้ในประวัติ</div></div><div class="empty-state"><div class="empty-icon">${skeIcon('leave')}</div><div class="empty-text">ไม่มีรายการลาใน${esc(monthLabel)}</div></div>`;
   }
   let html=`
+  <div style="background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-weight:900;color:#334155;">📅 รายการลา · ${esc(monthLabel)}<div style="font-size:11px;font-weight:500;color:#64748B;margin-top:3px;">แสดงเฉพาะช่วงวันที่คาบเกี่ยวเดือนนี้ · เดือนเก่ายังคงเก็บไว้ในประวัติ</div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
     <div style="background:#fff;border-radius:14px;padding:10px 6px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border:1.5px solid #E8EAF0;">
       <div style="font-size:22px;font-weight:900;color:#475569;">${onLeaveList.length}</div>
@@ -7550,6 +7726,18 @@ function updateLeaveBadge(){
   const n=_countNewLeave();
   [badge,navBadge,moreBadge].forEach(b=>{if(!b)return;if(n>0){b.textContent=n;b.classList.remove('hidden');}else b.classList.add('hidden');});
 }
+
+// เปิดแอปค้างข้ามเดือน หน้าลาและตัวเลขแจ้งเตือนจะเปลี่ยนเดือนได้เอง
+let _leaveAdminRenderedMonth=_leaveCurrentMonthBounds().start;
+setInterval(()=>{
+  const monthKey=_leaveCurrentMonthBounds().start;
+  if(monthKey===_leaveAdminRenderedMonth)return;
+  _leaveAdminRenderedMonth=monthKey;
+  const panel=document.getElementById('adminLeavePanel');
+  const content=document.getElementById('adminLeaveContent');
+  if(panel&&content&&!panel.classList.contains('hidden'))content.innerHTML=buildLeaveHTML();
+  updateLeaveBadge();
+},60*1000);
 
 function statusTimeShort(value){
   if(!value)return'ไม่ระบุ';
@@ -8727,7 +8915,31 @@ function renderJobPlanRowTR(row){
   </tr>`;
 }
 
+// เรียงเฉพาะหน้าจอภายในวันเดียวกัน งานรหัสคล้ายกันจึงอยู่ติดกัน โดยไม่แก้ลำดับจริงใน Firebase
+function jobPlanRouteSortKey(route){
+  return String(route||'')
+    .normalize('NFKC')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_>\/\\]+/g,'-')
+    .replace(/-+/g,'-');
+}
+function sortJobPlanRowsBySimilarRoute(rows){
+  return (rows||[])
+    .map((row,index)=>({row,index,key:jobPlanRouteSortKey(row?.route)}))
+    .sort((a,b)=>{
+      if(!a.key&&b.key)return 1;
+      if(a.key&&!b.key)return-1;
+      const byRoute=a.key.localeCompare(b.key,['en','th'],{numeric:true,sensitivity:'base'});
+      if(byRoute)return byRoute;
+      const byTime=String(a.row?.standbyTime||'').localeCompare(String(b.row?.standbyTime||''),undefined,{numeric:true});
+      return byTime||a.index-b.index;
+    })
+    .map(item=>item.row);
+}
+
 function renderJobPlanDateGroup(date,rows){
+  const sortedRows=sortJobPlanRowsBySimilarRoute(rows);
   return `<div style="margin-bottom:18px;">
     <div style="background:linear-gradient(90deg,#F97316,#FB923C);color:#fff;font-weight:800;font-size:13px;padding:9px 14px;border-radius:10px 10px 0 0;">
       📅 แผนงานวันที่ ${fmtJobDateFull(date)}
@@ -8743,7 +8955,7 @@ function renderJobPlanDateGroup(date,rows){
           <th style="padding:8px 6px;text-align:left;color:#1E40AF;font-weight:700;font-size:11px;border-bottom:2px solid #BFDBFE;">หมายเหตุ</th>
           <th style="padding:8px 6px;border-bottom:2px solid #BFDBFE;position:sticky;right:0;background:#EFF6FF;box-shadow:-4px 0 6px -4px rgba(0,0,0,.15);"></th>
         </tr></thead>
-        <tbody>${rows.map(r=>renderJobPlanRowTR(r)).join('')}</tbody>
+        <tbody>${sortedRows.map(r=>renderJobPlanRowTR(r)).join('')}</tbody>
       </table>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px;">
@@ -9542,6 +9754,7 @@ function renderAdminEmpList(){
       </div>
       <div class="row-btns" style="margin-top:10px;">
         <button class="btn btn-blue btn-sm" style="flex:1;" onclick="openAEdit('${e.id}')">✏️ แก้ไข</button>
+        <button class="btn btn-purple btn-sm" style="flex:1;" onclick="openAdminSetEmployeePin('${e.id}')">🔑 ตั้ง PIN</button>
         <button class="btn btn-red btn-sm" style="flex:1;" onclick="doDelEmp('${e.id}')">🗑️ ลบ</button>
       </div>
       <div id="aef_${e.id}" class="hidden" style="margin-top:12px;border-top:1px solid #E8EAF0;padding-top:12px;display:flex;flex-direction:column;gap:11px;">
@@ -9564,7 +9777,7 @@ function renderAdminEmpList(){
           <span style="font-size:12.5px;color:#0F766E;font-weight:600;">🔑 PIN ปัจจุบัน: <b id="curpin_${e.id}" data-pin="${esc(e.pin||'')}" style="letter-spacing:2px;">••••</b></span>
           <button type="button" class="btn btn-sm btn-gray" style="padding:4px 12px;font-size:11px;" onclick="toggleEmpPin('${e.id}',this)">👁️ แสดง</button>
         </div>
-        <div><div class="inp-label">🔒 รีเซ็ต PIN <span style="font-size:10px;color:#888;font-weight:400;">(เว้นว่างถ้าไม่ต้องการเปลี่ยน)</span></div><input class="inp" id="aepin_${e.id}" type="password" inputmode="numeric" maxlength="4" placeholder="PIN ใหม่ 4 หลัก"></div>
+        <div><div class="inp-label">🔒 ตั้ง/รีเซ็ต PIN เข้าแอป</div><button type="button" class="btn btn-purple btn-full" onclick="openAdminSetEmployeePin('${e.id}')">🔑 เปิดหน้าตั้ง PIN และตรวจสอบกับ Firebase</button></div>
         <div class="status-grid">${STATUSES.map(st=>{
           // ฝั่งแอดมิน: ล็อกปุ่มสแตนบายเฉพาะถ้า "ไม่มีทะเบียนรถ" เท่านั้น ไม่เช็คตำแหน่ง — แอดมินต้องตั้งสถานะแทนรถร่วมได้ (มีรถจริง แค่ไม่ได้ใช้แอปเอง)
           const noVehicle=!e.plate;
@@ -9642,6 +9855,69 @@ function toggleEmpPin(id,btn){
   if(shown){el.textContent='••••';el.setAttribute('data-shown','0');if(btn)btn.textContent='👁️ แสดง';}
   else{el.textContent=pin?pin:'(ยังไม่ตั้ง PIN)';el.setAttribute('data-shown','1');if(btn)btn.textContent='🙈 ซ่อน';}
 }
+function closeAdminSetEmployeePin(){document.getElementById('adminSetEmployeePinModal')?.remove();}
+function openAdminSetEmployeePin(id){
+  if(adminRole==='viewer'){alert('เฉพาะผู้ดูแลสิทธิ์เต็มเท่านั้นที่ตั้ง PIN ให้พนักงานได้');return;}
+  const emp=employees.find(e=>e&&String(e.id)===String(id));
+  if(!emp){alert('ไม่พบข้อมูลพนักงานนี้ในระบบ');return;}
+  closeAdminSetEmployeePin();
+  const modal=document.createElement('div');
+  modal.id='adminSetEmployeePinModal';
+  modal.style.cssText='position:fixed;inset:0;z-index:10050;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;';
+  modal.onclick=event=>{if(event.target===modal)closeAdminSetEmployeePin();};
+  modal.innerHTML=`<div style="width:min(100%,420px);background:#fff;border-radius:22px;padding:22px;box-shadow:0 24px 70px rgba(15,23,42,.28);">
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;">
+      <div style="width:44px;height:44px;border-radius:13px;background:#F3E8FF;color:#7E22CE;display:flex;align-items:center;justify-content:center;font-size:22px;">🔑</div>
+      <div style="flex:1;min-width:0;"><div style="font-size:18px;font-weight:900;color:#0F172A;">ตั้ง PIN เข้าแอป</div><div style="font-size:12px;color:#64748B;margin-top:3px;">${esc(emp.name)} · ${esc(emp.position||'พนักงาน')}</div></div>
+      <button type="button" onclick="closeAdminSetEmployeePin()" style="width:34px;height:34px;border-radius:50%;background:#F1F5F9;color:#475569;font-size:19px;">×</button>
+    </div>
+    <div style="font-size:12px;color:#475569;background:#F8FAFC;border:1px solid #CBD5E1;border-radius:10px;padding:9px 11px;margin-bottom:14px;line-height:1.5;">ใช้ได้กับพนักงานทุกตำแหน่ง รวมถึง <b>รถร่วม</b> ระบบจะแจ้งสำเร็จต่อเมื่ออ่าน PIN กลับจาก Firebase ตรงกันแล้วเท่านั้น</div>
+    <div class="inp-label">PIN ใหม่ 4 หลัก</div>
+    <input class="inp" id="adminEmployeePinNew" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="กรอกตัวเลข 4 หลัก" style="text-align:center;font-size:22px;letter-spacing:8px;">
+    <div class="inp-label" style="margin-top:12px;">ยืนยัน PIN อีกครั้ง</div>
+    <input class="inp" id="adminEmployeePinConfirm" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="กรอก PIN ซ้ำ" style="text-align:center;font-size:22px;letter-spacing:8px;" onkeydown="if(event.key==='Enter')saveAdminEmployeePin('${esc(String(emp.id))}')">
+    <div id="adminEmployeePinMsg" class="msg-err hidden" style="margin-top:10px;"></div>
+    <div class="row-btns" style="margin-top:16px;"><button class="btn btn-gray" id="adminEmployeePinCloseBtn" style="flex:1;" onclick="closeAdminSetEmployeePin()">ปิด</button><button class="btn btn-purple" id="adminEmployeePinSaveBtn" style="flex:1;" onclick="saveAdminEmployeePin('${esc(String(emp.id))}')">✓ บันทึก PIN</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('adminEmployeePinNew')?.focus(),80);
+}
+async function saveAdminEmployeePin(id){
+  const emp=employees.find(e=>e&&String(e.id)===String(id));
+  const pin=(document.getElementById('adminEmployeePinNew')?.value||'').trim();
+  const pin2=(document.getElementById('adminEmployeePinConfirm')?.value||'').trim();
+  const msg=document.getElementById('adminEmployeePinMsg');
+  const saveBtn=document.getElementById('adminEmployeePinSaveBtn');
+  const fail=text=>{if(msg){msg.textContent=text;msg.style.color='#EF4444';msg.classList.remove('hidden');}};
+  if(!emp){fail('ไม่พบข้อมูลพนักงานนี้ในระบบ');return;}
+  if(!/^\d{4}$/.test(pin)){fail('PIN ต้องเป็นตัวเลข 4 หลัก');return;}
+  if(pin!==pin2){fail('PIN ทั้งสองช่องไม่ตรงกัน');return;}
+  if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='🔄 กำลังบันทึก...';}
+  if(msg){msg.textContent='🔄 กำลังบันทึก PIN ตรงไปยัง Firebase และอ่านกลับเพื่อตรวจสอบ...';msg.style.color='#1E90D6';msg.classList.remove('hidden');}
+  let saved=false;
+  try{
+    if(!window.fbSetEmployeePinVerified)throw new Error('PIN verifier is not ready');
+    await window.fbSetEmployeePinVerified(id,pin);
+    employees=employees.map(e=>String(e.id)===String(id)?{...e,pin}:e);
+    _cacheSet('ske_trial_fb_emp',employees);
+    if(currentUser&&String(currentUser.id)===String(id)){currentUser={...currentUser,pin};saveU();}
+    renderAdminEmpList();
+    saved=true;
+    if(msg){msg.textContent=`✅ ตั้ง PIN ให้ ${emp.name} สำเร็จแล้ว — Firebase อ่านกลับตรงกัน เครื่องพนักงานใช้ PIN ใหม่นี้ได้ทันที`;msg.style.color='#059669';msg.style.background='#ECFDF5';msg.style.border='1px solid #6EE7B7';msg.style.borderRadius='10px';msg.style.padding='10px 12px';msg.classList.remove('hidden');}
+    if(saveBtn){saveBtn.textContent='✅ บันทึกสำเร็จ';saveBtn.style.background='#10B981';}
+  }catch(error){
+    console.error('[TRUCK TEST PIN] save/verify failed',error);
+    const raw=String(error?.code||error?.message||error||'');
+    let reason='PIN ยังไม่ถึง Firebase กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่';
+    if(/permission[_ -]?denied|permission-denied/i.test(raw))reason='Firebase ปฏิเสธสิทธิ์การเขียน กรุณาตรวจ Rules หรือ App Check';
+    else if(/app.?check|403|unauthorized/i.test(raw))reason='App Check ของเครื่องนี้ไม่ผ่าน กรุณาปิดแอป เปิดใหม่ แล้วลองอีกครั้ง';
+    else if(/timeout/i.test(raw))reason='การเชื่อมต่อ Firebase หมดเวลา กรุณาเปลี่ยนเครือข่ายแล้วลองอีกครั้ง';
+    else if(/not found/i.test(raw))reason='ไม่พบบัญชีนี้ใน Firebase กรุณารีเฟรชรายชื่อผู้ดูแล';
+    fail('❌ บันทึก PIN ไม่สำเร็จ: '+reason);
+  }finally{
+    if(saveBtn&&!saved){saveBtn.disabled=false;saveBtn.textContent='✓ ลองบันทึก PIN อีกครั้ง';}
+  }
+}
 function closeAEdit(id){document.getElementById('aef_'+id).classList.add('hidden');}
 function toggleAEditLeave(id){
   const box=document.getElementById('aeleavebox_'+id);
@@ -9675,7 +9951,6 @@ function doSaveAEdit(id){
   const phone=document.getElementById('aeph_'+id).value.trim();
   const lineId=document.getElementById('aeli_'+id)?.value.trim()||'';
   const note=document.getElementById('aen2_'+id).value;
-  const newPin=document.getElementById('aepin_'+id)?.value.trim()||'';
   const status=_aSel[id]||'standby';
   // ฝั่งแอดมิน: บังคับเลือกจังหวัดตามว่า "มีทะเบียนรถไหม" เท่านั้น ไม่เช็คตำแหน่ง — เพราะแอดมินต้องตั้งค่าแทนรถร่วมได้ (มีรถจริง แค่ไม่ได้ใช้แอปเอง)
   const noVehicle=!plate;
@@ -9718,7 +9993,6 @@ function doSaveAEdit(id){
       updated.leaveNote=leaveNoteVal;
       if(!prev.onLeave)updated.leaveApproval='pending';
     }
-    if(newPin.length===4&&/^\d{4}$/.test(newPin))updated.pin=newPin;
     recordRunLogIfNeeded(prev,status,note,id,plate,name);
     return updated;
   });
